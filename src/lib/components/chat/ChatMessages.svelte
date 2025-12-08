@@ -14,13 +14,14 @@
 		userAvatar?: string | null;
 		chatLayout?: 'bubbles' | 'discord';
 		avatarStyle?: 'circle' | 'rounded';
+		textCleanupEnabled?: boolean;
 		onSwipe: (messageId: number, direction: 'left' | 'right') => void;
 		onSaveEdit: (messageId: number, index: number, content: string) => void;
 		onDelete: (messageId: number, index: number) => void;
 		onBranch?: (messageId: number) => void;
 	}
 
-	let { messages, loading, isTyping, generating, charName, userName, charAvatar, userAvatar, chatLayout = 'bubbles', avatarStyle = 'circle', onSwipe, onSaveEdit, onDelete, onBranch }: Props = $props();
+	let { messages, loading, isTyping, generating, charName, userName, charAvatar, userAvatar, chatLayout = 'bubbles', avatarStyle = 'circle', textCleanupEnabled = true, onSwipe, onSaveEdit, onDelete, onBranch }: Props = $props();
 
 	let container: HTMLDivElement | undefined = $state();
 
@@ -60,6 +61,7 @@
 						{charAvatar}
 						{userAvatar}
 						{avatarStyle}
+						{textCleanupEnabled}
 						{generating}
 						onSwipe={(direction) => onSwipe(message.id, direction)}
 						onSaveEdit={(content) => onSaveEdit(message.id, index, content)}
@@ -73,6 +75,7 @@
 						isLast={index === messages.length - 1}
 						{charName}
 						{userName}
+						{textCleanupEnabled}
 						{generating}
 						onSwipe={(direction) => onSwipe(message.id, direction)}
 						onSaveEdit={(content) => onSaveEdit(message.id, index, content)}

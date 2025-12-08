@@ -11,6 +11,7 @@ export const users = sqliteTable('users', {
 	activePersonaId: integer('active_persona_id'), // Currently active persona (null = use user profile)
 	chatLayout: text('chat_layout').notNull().default('bubbles'), // 'bubbles' (chat app style) or 'discord' (full-width rows)
 	avatarStyle: text('avatar_style').notNull().default('circle'), // 'circle' or 'rounded' (rounded square)
+	textCleanupEnabled: integer('text_cleanup_enabled', { mode: 'boolean' }).notNull().default(true), // Enable asterisk normalization and quote cleanup
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.$defaultFn(() => new Date())

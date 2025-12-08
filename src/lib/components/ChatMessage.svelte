@@ -6,9 +6,10 @@
 		role: 'user' | 'assistant';
 		charName?: string;
 		userName?: string;
+		textCleanupEnabled?: boolean;
 	}
 
-	let { content, role, charName = 'Character', userName = 'User' }: Props = $props();
+	let { content, role, charName = 'Character', userName = 'User', textCleanupEnabled = true }: Props = $props();
 
 	// Check if this is an SD image message (reactive to content changes)
 	let sdImageMatch = $derived(content.match(/^\[SD_IMAGE\](.+?)\|(.+?)\[\/SD_IMAGE\]$/s));
@@ -19,6 +20,47 @@
 	// Lightbox state
 	let showLightbox = $state(false);
 
+	// Normalize asterisks per line - ensure balanced pairs
+	function normalizeAsterisks(line: string): string {
+		// Count asterisks (not inside quotes)
+		let inQuote = false;
+		let asteriskCount = 0;
+		for (let i = 0; i < line.length; i++) {
+			if (line[i] === '"' && (i === 0 || line[i-1] !== '\\')) {
+				inQuote = !inQuote;
+			} else if (line[i] === '*' && !inQuote) {
+				asteriskCount++;
+			}
+		}
+
+		// If odd number of asterisks, we need to fix it
+		if (asteriskCount % 2 !== 0) {
+			// Check if line starts or ends with asterisk
+			const startsWithAsterisk = /^\*+/.test(line);
+			const endsWithAsterisk = /\*+$/.test(line);
+
+			if (endsWithAsterisk && !startsWithAsterisk) {
+				// Remove trailing asterisk
+				line = line.replace(/\*+$/, (match) => {
+					return match.length > 1 ? '*'.repeat(match.length - 1) : '';
+				});
+			} else if (startsWithAsterisk && !endsWithAsterisk) {
+				// Add closing asterisk
+				line = line + '*';
+			} else if (startsWithAsterisk && endsWithAsterisk) {
+				// Both ends have asterisks but count is odd - normalize ending
+				line = line.replace(/\*+$/, (match) => {
+					const startMatch = line.match(/^\*+/);
+					const startCount = startMatch ? startMatch[0].length : 0;
+					// Match the start count
+					return '*'.repeat(startCount);
+				});
+			}
+		}
+
+		return line;
+	}
+
 	// Custom renderer for RP-style formatting
 	function renderMessage(text: string): string {
 		// Replace template variables (case-insensitive)
@@ -26,21 +68,44 @@
 			.replace(/\{\{char\}\}/gi, charName)
 			.replace(/\{\{user\}\}/gi, userName);
 
-		// Normalize curly/smart quotes to straight quotes
-		processed = processed
-			.replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"')  // Various double quotes
-			.replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'"); // Various single quotes
+		// Apply text cleanup if enabled
+		if (textCleanupEnabled) {
+			// Normalize curly/smart quotes to straight quotes
+			processed = processed
+				.replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"')  // Various double quotes
+				.replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'"); // Various single quotes
 
-		// Step 1: Protect quoted dialogue by replacing with placeholders
-		// Match opening quote, then everything until closing quote (including newlines, asterisks, etc.)
+			// Normalize asterisks per line
+			processed = processed.split('\n').map(normalizeAsterisks).join('\n');
+		}
+
+		// Step 1: Handle double-asterisk dialogue (e.g., **"text"** or **text**)
+		// Convert to dialogue style instead of bold
+		const boldDialogues: string[] = [];
+		processed = processed.replace(/\*\*"([^"]+)"\*\*/g, (match, content) => {
+			boldDialogues.push(content);
+			return `%%BOLD_DIALOGUE_${boldDialogues.length - 1}%%`;
+		});
+		// Also handle **text** without quotes as dialogue (non-greedy, allows internal asterisks)
+		processed = processed.replace(/\*\*(.+?)\*\*/g, (match, content) => {
+			boldDialogues.push(content);
+			return `%%BOLD_DIALOGUE_${boldDialogues.length - 1}%%`;
+		});
+
+		// Step 2: Protect regular quoted dialogue by replacing with placeholders
 		const dialogues: string[] = [];
 		processed = processed.replace(/"([^"]*)"/g, (match, content) => {
 			dialogues.push(content);
 			return `%%DIALOGUE_${dialogues.length - 1}%%`;
 		});
 
-		// Step 2: Normalize and process asterisks for actions (outside of dialogue)
-		processed = processed.replace(/\*(\s*)([^*]+?)(\s*)\*/g, (match, leadingSpace, content, trailingSpace) => {
+		// Step 3: Process single asterisks for actions (outside of dialogue)
+		// Use non-greedy match to handle nested cases better
+		processed = processed.replace(/\*(.+?)\*/g, (match, content) => {
+			// Skip if it looks like it's part of a double asterisk that wasn't caught
+			if (content.startsWith('*') || content.endsWith('*')) {
+				return match;
+			}
 			return `%%ACTION_START%%${content.trim()}%%ACTION_END%%`;
 		});
 
@@ -53,23 +118,33 @@
 		// Parse markdown
 		let html = marked.parse(processed, { async: false }) as string;
 
-		// Step 3: Restore dialogues - process any asterisks inside them too
-		dialogues.forEach((content, i) => {
-			// Process asterisks within dialogue
-			let processedContent = content.replace(/\*(\s*)([^*]+?)(\s*)\*/g, (m, ls, c, ts) => {
+		// Step 4: Restore bold dialogues as dialogue style
+		boldDialogues.forEach((content, i) => {
+			// Process any single asterisks within the dialogue
+			let processedContent = content.replace(/\*(.+?)\*/g, (m, c) => {
 				return `<span class="rp-action">${c.trim()}</span>`;
 			});
-			// Use regex to ensure we find the placeholder even if marked modified surrounding text
+			const placeholder = new RegExp(`%%BOLD_DIALOGUE_${i}%%`, 'g');
+			html = html.replace(placeholder, `<span class="rp-dialogue">"${processedContent}"</span>`);
+		});
+
+		// Step 5: Restore regular dialogues
+		dialogues.forEach((content, i) => {
+			// Process asterisks within dialogue
+			let processedContent = content.replace(/\*(.+?)\*/g, (m, c) => {
+				return `<span class="rp-action">${c.trim()}</span>`;
+			});
 			const placeholder = new RegExp(`%%DIALOGUE_${i}%%`, 'g');
 			html = html.replace(placeholder, `<span class="rp-dialogue">"${processedContent}"</span>`);
 		});
 
-		// Step 4: Convert action placeholders to styled spans
+		// Step 6: Convert action placeholders to styled spans
 		html = html.replace(/%%ACTION_START%%/g, '<span class="rp-action">');
 		html = html.replace(/%%ACTION_END%%/g, '</span>');
 
-		// Clean up any leftover <em> tags from markdown that weren't caught
+		// Clean up any leftover <em> or <strong> tags from markdown
 		html = html.replace(/<em>([^<]+)<\/em>/g, '<span class="rp-action">$1</span>');
+		html = html.replace(/<strong>([^<]+)<\/strong>/g, '<span class="rp-dialogue">"$1"</span>');
 
 		return html;
 	}

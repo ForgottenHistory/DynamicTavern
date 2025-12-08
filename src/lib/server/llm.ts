@@ -162,10 +162,10 @@ export async function generateChatCompletion(
 		finalSystemPrompt += `\n\n${lorebookContext}`;
 	}
 
-	// Format as single user message
+	// Format as system message
 	const formattedMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
 		{
-			role: 'user',
+			role: 'system',
 			content: finalSystemPrompt.trim()
 		}
 	];
@@ -276,10 +276,10 @@ export async function generateImpersonation(
 		impersonatePrompt += `\n\n${lorebookContext}`;
 	}
 
-	// Format as single user message
+	// Format as system message
 	const formattedMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
 		{
-			role: 'user',
+			role: 'system',
 			content: impersonatePrompt.trim()
 		}
 	];
@@ -392,10 +392,10 @@ export async function generateNarration(
 	// Replace history variable
 	narratorPrompt = narratorPrompt.replace(/\{\{history\}\}/g, historyText);
 
-	// Format as single user message
+	// Format as system message
 	const formattedMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
 		{
-			role: 'user',
+			role: 'system',
 			content: narratorPrompt.trim()
 		}
 	];

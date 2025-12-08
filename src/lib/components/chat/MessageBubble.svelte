@@ -10,6 +10,7 @@
 		isLast: boolean;
 		charName: string | undefined;
 		userName: string | undefined;
+		textCleanupEnabled?: boolean;
 		generating: boolean;
 		onSwipe: (direction: 'left' | 'right') => void;
 		onSaveEdit: (content: string) => void;
@@ -17,7 +18,7 @@
 		onBranch?: () => void;
 	}
 
-	let { message, index, isLast, charName, userName, generating, onSwipe, onSaveEdit, onDelete, onBranch }: Props = $props();
+	let { message, index, isLast, charName, userName, textCleanupEnabled = true, generating, onSwipe, onSaveEdit, onDelete, onBranch }: Props = $props();
 
 	// Reasoning modal state
 	let showReasoningModal = $state(false);
@@ -169,6 +170,7 @@
 					role={message.role as 'user' | 'assistant'}
 					{charName}
 					{userName}
+					{textCleanupEnabled}
 				/>
 			{/if}
 		</div>

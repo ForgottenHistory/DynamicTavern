@@ -4,6 +4,7 @@ export interface ChatActions {
 	loadSettings: () => Promise<{
 		chatLayout: 'bubbles' | 'discord';
 		avatarStyle: 'circle' | 'rounded';
+		textCleanupEnabled: boolean;
 		userAvatar: string | null;
 		userName: string | null;
 	}>;
@@ -34,6 +35,7 @@ export interface ChatActions {
 export async function loadSettings(): Promise<{
 	chatLayout: 'bubbles' | 'discord';
 	avatarStyle: 'circle' | 'rounded';
+	textCleanupEnabled: boolean;
 	userAvatar: string | null;
 	userName: string | null;
 }> {
@@ -44,6 +46,7 @@ export async function loadSettings(): Promise<{
 			return {
 				chatLayout: result.chatLayout || 'bubbles',
 				avatarStyle: result.avatarStyle || 'circle',
+				textCleanupEnabled: result.textCleanupEnabled ?? true,
 				userAvatar: result.userAvatar || null,
 				userName: result.userName || null
 			};
@@ -54,6 +57,7 @@ export async function loadSettings(): Promise<{
 	return {
 		chatLayout: 'bubbles',
 		avatarStyle: 'circle',
+		textCleanupEnabled: true,
 		userAvatar: null,
 		userName: null
 	};

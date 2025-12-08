@@ -8,6 +8,7 @@
 	let message = $state<{ type: 'success' | 'error'; text: string } | null>(null);
 	let chatLayout = $state<'bubbles' | 'discord'>('bubbles');
 	let avatarStyle = $state<'circle' | 'rounded'>('circle');
+	let textCleanupEnabled = $state(true);
 	let loading = $state(true);
 
 	// Load settings on mount
@@ -22,6 +23,7 @@
 				const data = await res.json();
 				chatLayout = data.chatLayout || 'bubbles';
 				avatarStyle = data.avatarStyle || 'circle';
+				textCleanupEnabled = data.textCleanupEnabled ?? true;
 			}
 		} catch (err) {
 			console.error('Failed to load settings:', err);
@@ -38,13 +40,13 @@
 			const res = await fetch('/api/settings', {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ chatLayout, avatarStyle })
+				body: JSON.stringify({ chatLayout, avatarStyle, textCleanupEnabled })
 			});
 
 			if (res.ok) {
 				message = { type: 'success', text: 'Settings saved successfully!' };
 				// Dispatch event so chat components can react
-				window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { chatLayout, avatarStyle } }));
+				window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { chatLayout, avatarStyle, textCleanupEnabled } }));
 			} else {
 				const data = await res.json();
 				message = { type: 'error', text: data.error || 'Failed to save settings' };
@@ -254,6 +256,34 @@
 								</div>
 							</div>
 						{/if}
+
+						<!-- Text Processing Section -->
+						<div>
+							<h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Text Processing</h2>
+							<p class="text-sm text-[var(--text-muted)] mb-4">
+								Configure how message text is processed and displayed
+							</p>
+
+							<label class="flex items-center justify-between p-4 rounded-xl border border-[var(--border-primary)] hover:border-[var(--border-secondary)] transition cursor-pointer">
+								<div>
+									<p class="font-medium text-[var(--text-primary)]">Text Cleanup</p>
+									<p class="text-sm text-[var(--text-muted)] mt-1">
+										Normalize quotes and balance asterisks for consistent RP formatting
+									</p>
+								</div>
+								<button
+									type="button"
+									role="switch"
+									aria-checked={textCleanupEnabled}
+									onclick={() => textCleanupEnabled = !textCleanupEnabled}
+									class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {textCleanupEnabled ? 'bg-[var(--accent-primary)]' : 'bg-[var(--bg-tertiary)]'}"
+								>
+									<span
+										class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {textCleanupEnabled ? 'translate-x-6' : 'translate-x-1'}"
+									></span>
+								</button>
+							</label>
+						</div>
 
 						<!-- Save Button -->
 						<div class="pt-4 border-t border-[var(--border-primary)]">

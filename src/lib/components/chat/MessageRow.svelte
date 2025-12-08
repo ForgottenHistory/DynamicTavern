@@ -13,6 +13,7 @@
 		charAvatar: string | null | undefined;
 		userAvatar: string | null | undefined;
 		avatarStyle?: 'circle' | 'rounded';
+		textCleanupEnabled?: boolean;
 		generating: boolean;
 		onSwipe: (direction: 'left' | 'right') => void;
 		onSaveEdit: (content: string) => void;
@@ -20,7 +21,7 @@
 		onBranch?: () => void;
 	}
 
-	let { message, index, isLast, charName, userName, charAvatar, userAvatar, avatarStyle = 'circle', generating, onSwipe, onSaveEdit, onDelete, onBranch }: Props = $props();
+	let { message, index, isLast, charName, userName, charAvatar, userAvatar, avatarStyle = 'circle', textCleanupEnabled = true, generating, onSwipe, onSaveEdit, onDelete, onBranch }: Props = $props();
 
 	// Reasoning modal state
 	let showReasoningModal = $state(false);
@@ -208,6 +209,7 @@
 					role={message.role as 'user' | 'assistant'}
 					{charName}
 					{userName}
+					{textCleanupEnabled}
 				/>
 			</div>
 		{/if}
