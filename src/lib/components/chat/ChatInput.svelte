@@ -1,5 +1,7 @@
 <script lang="ts">
-	export type SceneActionType = 'look_character' | 'look_scene' | 'narrate';
+	import type { SceneActionType, ImpersonateStyle } from '$lib/types/chat';
+
+	export type { SceneActionType, ImpersonateStyle };
 
 	interface Props {
 		disabled: boolean;
@@ -9,7 +11,7 @@
 		onSend: (message: string) => void;
 		onGenerate: () => void;
 		onRegenerate: () => void;
-		onImpersonate: () => void;
+		onImpersonate: (style: ImpersonateStyle) => void;
 		onGenerateImage: (type: 'character' | 'user' | 'scene' | 'raw') => void;
 		onSceneAction: (type: SceneActionType) => void;
 	}
@@ -19,6 +21,7 @@
 	let input = $state('');
 	let showImageDropdown = $state(false);
 	let showActionsDropdown = $state(false);
+	let showImpersonateDropdown = $state(false);
 	let textareaRef: HTMLTextAreaElement;
 
 	export function setInput(text: string) {
@@ -71,6 +74,11 @@
 		onSceneAction(type);
 	}
 
+	function handleImpersonate(style: ImpersonateStyle) {
+		showImpersonateDropdown = false;
+		onImpersonate(style);
+	}
+
 	function handleClickOutside(e: MouseEvent) {
 		const target = e.target as HTMLElement;
 		if (!target.closest('.image-dropdown-container')) {
@@ -78,6 +86,9 @@
 		}
 		if (!target.closest('.actions-dropdown-container')) {
 			showActionsDropdown = false;
+		}
+		if (!target.closest('.impersonate-dropdown-container')) {
+			showImpersonateDropdown = false;
 		}
 	}
 </script>
@@ -87,16 +98,63 @@
 <div class="bg-[var(--bg-secondary)] border-t border-[var(--border-primary)] px-6 py-4">
 	<div class="max-w-4xl mx-auto flex items-end gap-3">
 		<div class="flex items-center">
-			<button
-				onclick={onImpersonate}
-				{disabled}
-				class="p-3 text-[var(--text-muted)] hover:text-[var(--accent-primary)] disabled:opacity-30 disabled:cursor-not-allowed transition rounded-lg hover:bg-[var(--bg-tertiary)]"
-				title="Impersonate (AI writes as you)"
-			>
-				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-				</svg>
-			</button>
+			<!-- Impersonate Dropdown -->
+			<div class="relative impersonate-dropdown-container">
+				<button
+					onclick={() => (showImpersonateDropdown = !showImpersonateDropdown)}
+					disabled={disabled || impersonating}
+					class="p-3 text-[var(--text-muted)] hover:text-[var(--accent-user)] disabled:opacity-30 disabled:cursor-not-allowed transition rounded-lg hover:bg-[var(--bg-tertiary)]"
+					title="Impersonate (AI writes as you)"
+				>
+					{#if impersonating}
+						<div class="w-5 h-5 border-2 border-[var(--accent-user)] border-t-transparent rounded-full animate-spin"></div>
+					{:else}
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+						</svg>
+					{/if}
+				</button>
+				{#if showImpersonateDropdown}
+					<div class="absolute bottom-full left-0 mb-2 w-44 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-xl shadow-xl overflow-hidden z-50">
+						<button
+							onclick={() => handleImpersonate('serious')}
+							class="w-full px-4 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition flex items-center gap-3"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+							</svg>
+							Serious
+						</button>
+						<button
+							onclick={() => handleImpersonate('sarcastic')}
+							class="w-full px-4 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition flex items-center gap-3"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+							</svg>
+							Sarcastic
+						</button>
+						<button
+							onclick={() => handleImpersonate('flirty')}
+							class="w-full px-4 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition flex items-center gap-3"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+							</svg>
+							Flirty
+						</button>
+						<button
+							onclick={() => handleImpersonate('impersonate')}
+							class="w-full px-4 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition flex items-center gap-3"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+							</svg>
+							Impersonate
+						</button>
+					</div>
+				{/if}
+			</div>
 			<!-- Image Generation Button with Dropdown -->
 			<div class="relative image-dropdown-container">
 				<button

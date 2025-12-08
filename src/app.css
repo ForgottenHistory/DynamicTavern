@@ -21,6 +21,7 @@
 	--accent-primary: #14b8a6;  /* teal */
 	--accent-secondary: #06b6d4; /* cyan */
 	--accent-hover: #2dd4bf;    /* bright teal hover */
+	--accent-user: #a78bfa;     /* purple for user name */
 
 	/* User message bubble */
 	--user-bubble-from: #0f766e; /* dark teal */

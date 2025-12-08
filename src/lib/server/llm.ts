@@ -4,8 +4,13 @@ import { personaService } from './services/personaService';
 import { lorebookService } from './services/lorebookService';
 import { logger } from './utils/logger';
 import type { Message, Character, LlmSettings } from './db/schema';
+import type { LlmSettingsData } from './services/llmSettingsFileService';
+import type { ImpersonateStyle } from '$lib/types/chat';
 import fs from 'fs/promises';
 import path from 'path';
+
+// Type that accepts both old DB-based settings and new file-based settings
+type LlmSettingsLike = LlmSettings | LlmSettingsData;
 
 /**
  * Default system prompt used when file doesn't exist
@@ -47,11 +52,14 @@ async function loadSystemPromptFromFile(): Promise<string> {
 }
 
 /**
- * Load impersonate prompt from file
+ * Load impersonate prompt from file based on style
  */
-async function loadImpersonatePromptFromFile(): Promise<string> {
+async function loadImpersonatePromptFromFile(style: ImpersonateStyle = 'impersonate'): Promise<string> {
 	try {
-		return await fs.readFile(IMPERSONATE_PROMPT_FILE, 'utf-8');
+		// For 'impersonate' style, use the default file; for others, use style-specific files
+		const filename = style === 'impersonate' ? 'chat_impersonate.txt' : `impersonate_${style}.txt`;
+		const filePath = path.join(PROMPTS_DIR, filename);
+		return await fs.readFile(filePath, 'utf-8');
 	} catch (error) {
 		// File doesn't exist, return default
 		return DEFAULT_IMPERSONATE_PROMPT;
@@ -215,13 +223,17 @@ export async function generateChatCompletion(
  * Generate an impersonation message (AI writes as the user)
  * @param conversationHistory - Array of previous messages in the conversation
  * @param character - Character card data
- * @param settings - User's LLM settings
+ * @param settings - LLM settings
+ * @param style - Impersonation style (serious, sarcastic, flirty, or impersonate)
+ * @param userId - User ID for persona/lorebook lookup
  * @returns Generated user message content
  */
 export async function generateImpersonation(
 	conversationHistory: Message[],
 	character: Character,
-	settings: LlmSettings
+	settings: LlmSettingsLike,
+	style: ImpersonateStyle = 'impersonate',
+	userId?: number
 ): Promise<string> {
 	// Parse character card data
 	let characterData: any = {};
@@ -237,11 +249,12 @@ export async function generateImpersonation(
 	}
 
 	// Get active user info (persona or default profile)
-	const userInfo = await personaService.getActiveUserInfo(settings.userId);
+	const resolvedUserId = userId ?? (settings as any).userId ?? 1;
+	const userInfo = await personaService.getActiveUserInfo(resolvedUserId);
 	const userName = userInfo.name;
 
-	// Load impersonate prompt from file
-	const basePrompt = await loadImpersonatePromptFromFile();
+	// Load impersonate prompt from file based on style
+	const basePrompt = await loadImpersonatePromptFromFile(style);
 
 	// Format conversation history as text
 	const historyText = conversationHistory
@@ -268,7 +281,7 @@ export async function generateImpersonation(
 
 	// Add lorebook/world info context based on conversation keywords
 	const lorebookContext = await lorebookService.buildLorebookContext(
-		settings.userId,
+		resolvedUserId,
 		character.id,
 		conversationHistory.map((m) => ({ content: m.content }))
 	);
@@ -292,17 +305,17 @@ export async function generateImpersonation(
 		userName
 	);
 
-	logger.info(`Generating impersonation`, {
+	logger.info(`Generating impersonation (${style})`, {
 		character: character.name,
 		user: userName,
 		model: settings.model,
+		style,
 		messageCount: formattedMessages.length
 	});
 
-	// Call LLM service with user settings
+	// Call LLM service with settings
 	const response = await llmService.createChatCompletion({
 		messages: formattedMessages,
-		userId: settings.userId,
 		model: settings.model,
 		temperature: settings.temperature,
 		maxTokens: settings.maxTokens
@@ -318,7 +331,12 @@ export async function generateImpersonation(
 	// Log response for debugging
 	llmLogService.saveResponseLog(response.content, response.content, 'impersonate', logId, response);
 
-	return response.content;
+	// Strip username prefix if present
+	let content = response.content.trim();
+	const userNamePattern = new RegExp(`^${userName}\\s*:\\s*`, 'i');
+	content = content.replace(userNamePattern, '');
+
+	return content;
 }
 
 export type NarrationType = 'look_character' | 'look_scene' | 'narrate';

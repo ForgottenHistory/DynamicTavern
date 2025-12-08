@@ -1,4 +1,7 @@
 import type { Message } from '$lib/server/db/schema';
+import type { ImpersonateStyle, SceneActionType } from '$lib/types/chat';
+
+export type { ImpersonateStyle, SceneActionType };
 
 export interface ChatActions {
 	loadSettings: () => Promise<{
@@ -19,7 +22,7 @@ export interface ChatActions {
 	}>;
 	sendMessage: (characterId: number, userMessage: string) => Promise<boolean>;
 	generateResponse: (characterId: number) => Promise<boolean>;
-	impersonate: (characterId: number) => Promise<string | null>;
+	impersonate: (characterId: number, style: ImpersonateStyle) => Promise<string | null>;
 	generateImageTags: (characterId: number, type: 'character' | 'user' | 'scene' | 'raw') => Promise<string | null>;
 	generateSDImage: (characterId: number, tags: string) => Promise<boolean>;
 	resetConversation: (conversationId: number) => Promise<boolean>;
@@ -133,10 +136,12 @@ export async function generateResponse(characterId: number): Promise<boolean> {
 	}
 }
 
-export async function impersonate(characterId: number): Promise<string | null> {
+export async function impersonate(characterId: number, style: ImpersonateStyle = 'impersonate'): Promise<string | null> {
 	try {
 		const response = await fetch(`/api/chat/${characterId}/impersonate`, {
-			method: 'POST'
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ style })
 		});
 		if (response.ok) {
 			const result = await response.json();
@@ -310,8 +315,6 @@ export async function saveMessageEdit(messageId: number, content: string): Promi
 		return null;
 	}
 }
-
-export type SceneActionType = 'look_character' | 'look_scene' | 'narrate';
 
 export async function triggerSceneAction(characterId: number, actionType: SceneActionType): Promise<boolean> {
 	try {

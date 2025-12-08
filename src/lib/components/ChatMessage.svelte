@@ -155,6 +155,67 @@
 		}).join('\n');
 	}
 
+	// Build list of name parts to highlight (full name + individual words)
+	function getNameParts(name: string): string[] {
+		const parts: string[] = [];
+		const trimmed = name.trim();
+		if (trimmed) {
+			parts.push(trimmed); // Full name first
+			// Add individual words if multi-word name
+			const words = trimmed.split(/\s+/);
+			if (words.length > 1) {
+				words.forEach(word => {
+					if (word.length > 1) { // Skip single letters
+						parts.push(word);
+					}
+				});
+			}
+		}
+		return parts;
+	}
+
+	// Highlight names in text (called after markdown processing)
+	function highlightNames(html: string): string {
+		const charParts = getNameParts(charName);
+		const userParts = getNameParts(userName);
+
+		// Create regex patterns - match whole words only, case-insensitive
+		// Process longer names first to avoid partial replacements
+		const allParts: { name: string; isChar: boolean }[] = [
+			...charParts.map(p => ({ name: p, isChar: true })),
+			...userParts.map(p => ({ name: p, isChar: false }))
+		].sort((a, b) => b.name.length - a.name.length);
+
+		let result = html;
+		for (const { name, isChar } of allParts) {
+			// Word boundary regex - escape special chars in name
+			const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+			const regex = new RegExp(`\\b(${escaped})\\b`, 'gi');
+			const className = isChar ? 'rp-char-name' : 'rp-user-name';
+
+			// Only replace if not already inside a tag or span
+			result = result.replace(regex, (match, captured, offset) => {
+				// Check if we're inside an HTML tag
+				const before = result.slice(0, offset);
+				const openTags = (before.match(/<[^>]*$/g) || []).length;
+				if (openTags > 0) return match;
+
+				// Check if already wrapped in our name span
+				const recentHtml = result.slice(Math.max(0, offset - 50), offset);
+				if (recentHtml.includes('rp-char-name') || recentHtml.includes('rp-user-name')) {
+					// Could be inside a span, do simple check
+					const lastOpenSpan = recentHtml.lastIndexOf('<span');
+					const lastCloseSpan = recentHtml.lastIndexOf('</span>');
+					if (lastOpenSpan > lastCloseSpan) return match;
+				}
+
+				return `<span class="${className}">${captured}</span>`;
+			});
+		}
+
+		return result;
+	}
+
 	// Custom renderer for RP-style formatting
 	function renderMessage(text: string): string {
 		// Replace template variables (case-insensitive)
@@ -245,6 +306,9 @@
 		html = html.replace(/<em>([^<]+)<\/em>/g, '<span class="rp-action">$1</span>');
 		html = html.replace(/<strong>([^<]+)<\/strong>/g, '<span class="rp-dialogue">"$1"</span>');
 
+		// Highlight character and user names
+		html = highlightNames(html);
+
 		return html;
 	}
 
@@ -310,6 +374,16 @@
 
 	.chat-message :global(.rp-dialogue) {
 		color: var(--accent-hover);
+	}
+
+	.chat-message :global(.rp-char-name) {
+		color: var(--accent-secondary);
+		font-weight: 600;
+	}
+
+	.chat-message :global(.rp-user-name) {
+		color: var(--accent-user);
+		font-weight: 600;
 	}
 
 	.chat-message :global(strong) {

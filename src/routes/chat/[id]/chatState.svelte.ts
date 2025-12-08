@@ -10,7 +10,7 @@ import {
 } from '$lib/stores/socket';
 import * as api from './chatActions';
 
-export type { SceneActionType } from './chatActions';
+export type { SceneActionType, ImpersonateStyle } from './chatActions';
 
 export interface Branch {
 	id: number;
@@ -219,12 +219,12 @@ export function createChatState(options: ChatStateOptions) {
 		}
 	}
 
-	async function impersonate() {
+	async function impersonate(style: api.ImpersonateStyle = 'impersonate') {
 		if (sending || impersonating) return;
 		impersonating = true;
 
 		try {
-			const content = await api.impersonate(options.characterId);
+			const content = await api.impersonate(options.characterId, style);
 			if (content) {
 				options.onSetInput(content);
 			} else {

@@ -1,23 +1,28 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { conversations, messages, characters, llmSettings } from '$lib/server/db/schema';
+import { conversations, messages, characters } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { generateImpersonation } from '$lib/server/llm';
+import { llmSettingsService } from '$lib/server/services/llmSettingsService';
+import type { ImpersonateStyle } from '$lib/types/chat';
 
 // POST - Generate a message as the user (impersonation)
 // Returns the generated text for the user to review before sending
-export const POST: RequestHandler = async ({ params, cookies }) => {
+export const POST: RequestHandler = async ({ params, cookies, request }) => {
 	const userId = cookies.get('userId');
 	if (!userId) {
 		return json({ error: 'Not authenticated' }, { status: 401 });
 	}
 
-	const characterId = parseInt(params.characterId);
+	const characterId = parseInt(params.characterId!);
 	if (isNaN(characterId)) {
 		return json({ error: 'Invalid character ID' }, { status: 400 });
 	}
 
 	try {
+		const body = await request.json();
+		const style: ImpersonateStyle = body.style || 'impersonate';
+
 		// Find active conversation (branch)
 		const [conversation] = await db
 			.select()
@@ -53,22 +58,16 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 			.where(eq(messages.conversationId, conversation.id))
 			.orderBy(messages.createdAt);
 
-		// Get LLM settings
-		const [settings] = await db
-			.select()
-			.from(llmSettings)
-			.where(eq(llmSettings.userId, parseInt(userId)))
-			.limit(1);
-
-		if (!settings) {
-			return json({ error: 'LLM settings not found' }, { status: 404 });
-		}
+		// Get LLM settings from file
+		const settings = llmSettingsService.getSettings();
 
 		// Generate impersonation response (AI writes as user)
 		const impersonatedMessage = await generateImpersonation(
 			conversationHistory,
 			character,
-			settings
+			settings,
+			style,
+			parseInt(userId)
 		);
 
 		// Return the generated text for the user to review
