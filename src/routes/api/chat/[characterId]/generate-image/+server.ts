@@ -52,6 +52,17 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 			return json({ error: 'Character not found' }, { status: 404 });
 		}
 
+		// Parse character card data for description and scenario
+		let characterData: any = {};
+		try {
+			characterData = JSON.parse(character.cardData);
+			if (characterData.data) {
+				characterData = characterData.data;
+			}
+		} catch (error) {
+			console.error('Failed to parse character card data:', error);
+		}
+
 		// Get recent conversation history (last 10 messages for context)
 		const conversationHistory = await db
 			.select()
@@ -72,9 +83,12 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 		const result = await imageTagGenerationService.generateTags({
 			conversationContext,
 			characterName: character.name,
+			characterDescription: character.description || characterData.description || '',
+			characterScenario: characterData.scenario || '',
 			imageTags: character.imageTags || '',
 			contextualTags: character.contextualTags || '',
-			type: type as 'all' | 'character' | 'user' | 'scene'
+			type: type as 'all' | 'character' | 'user' | 'scene',
+			userId: parseInt(userId)
 		});
 
 		return json({

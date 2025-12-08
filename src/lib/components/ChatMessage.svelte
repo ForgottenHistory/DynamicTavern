@@ -242,20 +242,35 @@
 		// Step 1: Handle double-asterisk dialogue (e.g., **"text"** or **text**)
 		// Convert to dialogue style instead of bold
 		const boldDialogues: string[] = [];
+
+		// Helper to process asterisks in dialogue content (bold emphasis, not action style)
+		const processAsterisksInDialogue = (content: string): string => {
+			let result = content;
+			let prev = '';
+			while (prev !== result) {
+				prev = result;
+				result = result.replace(/\*([^*]+)\*/g, (m, c) => {
+					return `<span class="rp-dialogue-emphasis">${c.trim()}</span>`;
+				});
+			}
+			return result;
+		};
+
 		processed = processed.replace(/\*\*"([^"]+)"\*\*/g, (match, content) => {
-			boldDialogues.push(content);
+			boldDialogues.push(processAsterisksInDialogue(content));
 			return `%%BOLD_DIALOGUE_${boldDialogues.length - 1}%%`;
 		});
 		// Also handle **text** without quotes as dialogue (non-greedy, allows internal asterisks)
 		processed = processed.replace(/\*\*(.+?)\*\*/g, (match, content) => {
-			boldDialogues.push(content);
+			boldDialogues.push(processAsterisksInDialogue(content));
 			return `%%BOLD_DIALOGUE_${boldDialogues.length - 1}%%`;
 		});
 
 		// Step 2: Protect regular quoted dialogue by replacing with placeholders
+		// Process asterisks within dialogue content NOW, before markdown parsing
 		const dialogues: string[] = [];
 		processed = processed.replace(/"([^"]*)"/g, (match, content) => {
-			dialogues.push(content);
+			dialogues.push(processAsterisksInDialogue(content));
 			return `%%DIALOGUE_${dialogues.length - 1}%%`;
 		});
 
@@ -278,24 +293,16 @@
 		// Parse markdown
 		let html = marked.parse(processed, { async: false }) as string;
 
-		// Step 4: Restore bold dialogues as dialogue style
+		// Step 4: Restore bold dialogues as dialogue style (asterisks already processed)
 		boldDialogues.forEach((content, i) => {
-			// Process any single asterisks within the dialogue
-			let processedContent = content.replace(/\*(.+?)\*/g, (m, c) => {
-				return `<span class="rp-action">${c.trim()}</span>`;
-			});
 			const placeholder = new RegExp(`%%BOLD_DIALOGUE_${i}%%`, 'g');
-			html = html.replace(placeholder, `<span class="rp-dialogue">"${processedContent}"</span>`);
+			html = html.replace(placeholder, `<span class="rp-dialogue">"${content}"</span>`);
 		});
 
-		// Step 5: Restore regular dialogues
+		// Step 5: Restore regular dialogues (asterisks already processed)
 		dialogues.forEach((content, i) => {
-			// Process asterisks within dialogue
-			let processedContent = content.replace(/\*(.+?)\*/g, (m, c) => {
-				return `<span class="rp-action">${c.trim()}</span>`;
-			});
 			const placeholder = new RegExp(`%%DIALOGUE_${i}%%`, 'g');
-			html = html.replace(placeholder, `<span class="rp-dialogue">"${processedContent}"</span>`);
+			html = html.replace(placeholder, `<span class="rp-dialogue">"${content}"</span>`);
 		});
 
 		// Step 6: Convert action placeholders to styled spans
@@ -374,6 +381,11 @@
 
 	.chat-message :global(.rp-dialogue) {
 		color: var(--accent-hover);
+	}
+
+	.chat-message :global(.rp-dialogue-emphasis) {
+		color: var(--accent-hover);
+		font-weight: 600;
 	}
 
 	.chat-message :global(.rp-char-name) {

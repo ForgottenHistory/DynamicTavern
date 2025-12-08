@@ -14,7 +14,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 	}
 
 	try {
-		const { conversationContext, characterName, imageTags, contextualTags } = await request.json();
+		const { conversationContext, characterName, characterDescription, characterScenario, imageTags, contextualTags } = await request.json();
 
 		if (!conversationContext) {
 			return json({ error: 'conversationContext is required' }, { status: 400 });
@@ -23,8 +23,11 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		const result = await imageTagGenerationService.generateTags({
 			conversationContext,
 			characterName: characterName || '',
+			characterDescription: characterDescription || '',
+			characterScenario: characterScenario || '',
 			imageTags: imageTags || '', // Always included tags (character appearance)
-			contextualTags: contextualTags || '' // AI chooses from these
+			contextualTags: contextualTags || '', // AI chooses from these
+			userId: parseInt(userId)
 		});
 
 		return json({

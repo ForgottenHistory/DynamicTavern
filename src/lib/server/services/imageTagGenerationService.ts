@@ -1,10 +1,38 @@
 import { imageLlmSettingsService } from './imageLlmSettingsService';
 import { callLlm } from './llmCallService';
+import { personaService } from './personaService';
 import fs from 'fs/promises';
 import path from 'path';
 
 const TAG_LIBRARY_DIR = 'data';
 const PROMPTS_DIR = 'data/prompts';
+
+/**
+ * Replace template variables in prompts (consistent with llm.ts)
+ */
+function replaceTemplateVariables(
+	template: string,
+	variables: {
+		char: string;
+		user: string;
+		description: string;
+		scenario: string;
+		history: string;
+		image_tags: string;
+		contextual_tags: string;
+		tag_library: string;
+	}
+): string {
+	return template
+		.replace(/\{\{char\}\}/g, variables.char)
+		.replace(/\{\{user\}\}/g, variables.user)
+		.replace(/\{\{description\}\}/g, variables.description)
+		.replace(/\{\{scenario\}\}/g, variables.scenario)
+		.replace(/\{\{history\}\}/g, variables.history)
+		.replace(/\{\{image_tags\}\}/g, variables.image_tags)
+		.replace(/\{\{contextual_tags\}\}/g, variables.contextual_tags)
+		.replace(/\{\{tag_library\}\}/g, variables.tag_library);
+}
 
 class ImageTagGenerationService {
 
@@ -38,11 +66,13 @@ class ImageTagGenerationService {
 	}
 
 	/**
-	 * Load tag library (always reads fresh from disk)
+	 * Load tag library for a user (always reads fresh from disk)
 	 */
-	async loadTagLibrary(): Promise<string> {
+	async loadTagLibrary(userId?: number): Promise<string> {
 		try {
-			const filePath = path.join(TAG_LIBRARY_DIR, 'tags.txt');
+			// Use user-specific tag library if userId provided
+			const filename = userId ? `tags_${userId}.txt` : 'tags.txt';
+			const filePath = path.join(TAG_LIBRARY_DIR, filename);
 			const content = await fs.readFile(filePath, 'utf-8');
 			return content;
 		} catch (error) {
@@ -57,19 +87,26 @@ class ImageTagGenerationService {
 	 * @param type - Which tags to generate: 'all', 'character', 'user', or 'scene'
 	 * @param imageTags - Always included tags (character appearance - hair, eyes, body)
 	 * @param contextualTags - Character-specific tags the AI can choose from
+	 * @param userId - User ID for loading user-specific tag library
 	 */
 	async generateTags({
 		conversationContext,
 		characterName = '',
+		characterDescription = '',
+		characterScenario = '',
 		imageTags = '',
 		contextualTags = '',
-		type = 'all'
+		type = 'all',
+		userId
 	}: {
 		conversationContext: string;
 		characterName?: string;
+		characterDescription?: string;
+		characterScenario?: string;
 		imageTags?: string;
 		contextualTags?: string;
 		type?: 'all' | 'character' | 'user' | 'scene';
+		userId?: number;
 	}): Promise<{ generatedTags: string; alwaysTags: string; breakdown?: { character?: string; user?: string; scene?: string } }> {
 		try {
 			console.log(`🎨 Generating image tags (${type}) from conversation context...`);
@@ -82,20 +119,39 @@ class ImageTagGenerationService {
 				temperature: settings.temperature
 			});
 
-			// Load prompts and tag library
-			const [prompts, tagLibrary] = await Promise.all([
+			// Load prompts, tag library, and user info (user-specific if userId provided)
+			const [prompts, tagLibrary, userInfo] = await Promise.all([
 				this.loadPrompts(),
-				this.loadTagLibrary()
+				this.loadTagLibrary(userId),
+				userId ? personaService.getActiveUserInfo(userId) : Promise.resolve({ name: 'User', description: null, avatarData: null })
 			]);
 
-			// Build base context for all prompts
-			const baseContext = this.buildBaseContext({
-				conversationContext,
-				imageTags,
-				contextualTags,
-				characterName,
-				tagLibrary
-			});
+			const userName = userInfo.name;
+
+			if (tagLibrary) {
+				console.log(`🎨 Loaded tag library for user ${userId} (${tagLibrary.split('\n').length} lines)`);
+			} else {
+				console.log(`🎨 No tag library found for user ${userId}`);
+			}
+
+			// Prepare template variables for prompt replacement
+			const templateVars = {
+				char: characterName || 'Character',
+				user: userName,
+				description: characterDescription || '',
+				scenario: characterScenario || '',
+				history: conversationContext || '',
+				image_tags: imageTags || '',
+				contextual_tags: contextualTags || '',
+				tag_library: tagLibrary || ''
+			};
+
+			// Replace template variables in prompts
+			const processedPrompts = {
+				character: replaceTemplateVariables(prompts.character, templateVars),
+				user: replaceTemplateVariables(prompts.user, templateVars),
+				scene: replaceTemplateVariables(prompts.scene, templateVars)
+			};
 
 			const breakdown: { character?: string; user?: string; scene?: string } = {};
 
@@ -104,17 +160,17 @@ class ImageTagGenerationService {
 				// Make three parallel LLM calls for character, user, and scene
 				const [characterTags, userTags, sceneTags] = await Promise.all([
 					this.callImageLLM({
-						messages: [{ role: 'user', content: `${baseContext}\n\n${prompts.character}\n\nYour selected tags:` }],
+						messages: [{ role: 'user', content: processedPrompts.character }],
 						settings,
 						tagType: 'character'
 					}),
 					this.callImageLLM({
-						messages: [{ role: 'user', content: `${baseContext}\n\n${prompts.user}\n\nYour selected tags:` }],
+						messages: [{ role: 'user', content: processedPrompts.user }],
 						settings,
 						tagType: 'user'
 					}),
 					this.callImageLLM({
-						messages: [{ role: 'user', content: `${baseContext}\n\n${prompts.scene}\n\nYour selected tags:` }],
+						messages: [{ role: 'user', content: processedPrompts.scene }],
 						settings,
 						tagType: 'scene'
 					})
@@ -130,7 +186,7 @@ class ImageTagGenerationService {
 			} else {
 				// Generate only the requested type
 				const tags = await this.callImageLLM({
-					messages: [{ role: 'user', content: `${baseContext}\n\n${prompts[type]}\n\nYour selected tags:` }],
+					messages: [{ role: 'user', content: processedPrompts[type] }],
 					settings,
 					tagType: type
 				});
@@ -186,63 +242,6 @@ class ImageTagGenerationService {
 		return result.content;
 	}
 
-	/**
-	 * Build the base context shared by all three tag generation prompts
-	 */
-	private buildBaseContext({
-		conversationContext,
-		imageTags,
-		contextualTags,
-		characterName,
-		tagLibrary
-	}: {
-		conversationContext: string;
-		imageTags: string;
-		contextualTags: string;
-		characterName: string;
-		tagLibrary: string;
-	}): string {
-		let context = '';
-
-		if (tagLibrary) {
-			context += `Here is the library of valid Danbooru tags you can choose from:
-
-${tagLibrary}
-
----
-
-`;
-		}
-
-		// Show character's base appearance (always included in final prompt)
-		if (imageTags) {
-			context += `${characterName || 'Character'}'s base appearance (these tags are ALWAYS included, do NOT repeat them):
-${imageTags}
-
----
-
-`;
-		}
-
-		// Show optional character-specific tags the AI can choose from
-		if (contextualTags) {
-			context += `Optional tags for ${characterName || 'this character'} (include these if relevant to the scene):
-${contextualTags}
-
----
-
-`;
-		}
-
-		context += `Recent conversation:
-${conversationContext}
-
----
-
-Based on the conversation, select appropriate Danbooru tags.`;
-
-		return context;
-	}
 }
 
 export const imageTagGenerationService = new ImageTagGenerationService();
