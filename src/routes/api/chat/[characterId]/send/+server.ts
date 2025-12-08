@@ -106,7 +106,8 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 				conversationHistory,
 				character,
 				settings,
-				'chat' // message type for logging
+				'chat', // message type for logging
+				conversation.id // pass conversation ID for world info
 			);
 		} catch (genError) {
 			// Stop typing indicator on generation error

@@ -4,8 +4,7 @@ import { conversations, messages, characters, llmSettings } from '$lib/server/db
 import { eq, and } from 'drizzle-orm';
 import { generateNarration, type NarrationType } from '$lib/server/llm';
 import { emitMessage, emitTyping } from '$lib/server/socket';
-
-export type SceneActionType = NarrationType;
+import type { SceneActionType } from '$lib/types/chat';
 
 // POST - Trigger a scene action (generates a system narration)
 export const POST: RequestHandler = async ({ params, request, cookies }) => {
@@ -20,11 +19,19 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 	}
 
 	try {
-		const { actionType } = await request.json() as { actionType: SceneActionType };
+		const { actionType, itemContext } = await request.json() as {
+			actionType: SceneActionType;
+			itemContext?: { owner: string; itemName: string; itemDescription: string };
+		};
 
-		const validTypes: SceneActionType[] = ['look_character', 'look_scene', 'narrate'];
+		const validTypes: SceneActionType[] = ['look_character', 'look_scene', 'narrate', 'look_item'];
 		if (!actionType || !validTypes.includes(actionType)) {
 			return json({ error: 'Invalid action type' }, { status: 400 });
+		}
+
+		// look_item requires itemContext
+		if (actionType === 'look_item' && !itemContext) {
+			return json({ error: 'Item context required for look_item action' }, { status: 400 });
 		}
 
 		// Find active conversation
@@ -79,11 +86,15 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 		let result: { content: string; reasoning: string | null };
 		try {
 			// Generate narration using the dedicated function
+			// For look_item, pass the narration type as 'look_item' with item context
+			const narrateType: NarrationType = actionType === 'look_item' ? 'look_item' : actionType;
 			result = await generateNarration(
 				conversationHistory,
 				character,
 				settings,
-				actionType
+				narrateType,
+				conversation.id,
+				itemContext
 			);
 		} catch (genError) {
 			emitTyping(conversation.id, false);

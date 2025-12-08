@@ -2,6 +2,7 @@ import { llmService } from './services/llmService';
 import { llmLogService } from './services/llmLogService';
 import { personaService } from './services/personaService';
 import { lorebookService } from './services/lorebookService';
+import { worldInfoService } from './services/worldInfoService';
 import { logger } from './utils/logger';
 import type { Message, Character, LlmSettings } from './db/schema';
 import type { LlmSettingsData } from './services/llmSettingsFileService';
@@ -32,7 +33,8 @@ Stay in character as {{user}}. Write a natural response that fits the conversati
 const DEFAULT_NARRATION_PROMPTS: Record<string, string> = {
 	look_character: `You are a narrator. Briefly describe {{char}}'s current appearance and expression. Keep it to 2-3 sentences.`,
 	look_scene: `You are a narrator. Briefly describe the current environment. Keep it to 2-3 sentences.`,
-	narrate: `You are a narrator. Briefly describe what is happening in the scene. Keep it to 2-3 sentences.`
+	narrate: `You are a narrator. Briefly describe what is happening in the scene. Keep it to 2-3 sentences.`,
+	look_item: `You are a narrator. Briefly describe {{item_owner}}'s {{item_name}} in detail. Keep it to 2-3 sentences.`
 };
 
 const PROMPTS_DIR = path.join(process.cwd(), 'data', 'prompts');
@@ -77,6 +79,7 @@ function replaceTemplateVariables(
 		personality: string;
 		scenario: string;
 		description: string;
+		world?: string;
 	}
 ): string {
 	return template
@@ -84,7 +87,8 @@ function replaceTemplateVariables(
 		.replace(/\{\{user\}\}/g, variables.user)
 		.replace(/\{\{personality\}\}/g, variables.personality)
 		.replace(/\{\{scenario\}\}/g, variables.scenario)
-		.replace(/\{\{description\}\}/g, variables.description);
+		.replace(/\{\{description\}\}/g, variables.description)
+		.replace(/\{\{world\}\}/g, variables.world || '');
 }
 
 interface ChatCompletionResult {
@@ -98,13 +102,15 @@ interface ChatCompletionResult {
  * @param character - Character card data
  * @param settings - User's LLM settings
  * @param messageType - Type of message for logging ('chat', 'regenerate', 'swipe')
+ * @param conversationId - Optional conversation ID for world info lookup
  * @returns Generated assistant message content and reasoning
  */
 export async function generateChatCompletion(
 	conversationHistory: Message[],
 	character: Character,
 	settings: LlmSettings,
-	messageType: string = 'chat'
+	messageType: string = 'chat',
+	conversationId?: number
 ): Promise<ChatCompletionResult> {
 	// Parse character card data
 	let characterData: any = {};
@@ -126,6 +132,13 @@ export async function generateChatCompletion(
 	// Load system prompt from file
 	const basePrompt = await loadSystemPromptFromFile();
 
+	// Get world info if conversation ID provided
+	let worldText = '';
+	if (conversationId) {
+		const worldInfo = await worldInfoService.getWorldInfo(conversationId);
+		worldText = worldInfoService.formatWorldInfoForPrompt(worldInfo, character.name, userName);
+	}
+
 	// Format conversation history as text
 	const historyText = conversationHistory
 		.map((msg) => {
@@ -141,7 +154,8 @@ export async function generateChatCompletion(
 		user: userName,
 		personality: characterData.personality || '',
 		scenario: characterData.scenario || '',
-		description: character.description || characterData.description || ''
+		description: character.description || characterData.description || '',
+		world: worldText
 	};
 
 	// Replace variables in template
@@ -226,6 +240,7 @@ export async function generateChatCompletion(
  * @param settings - LLM settings
  * @param style - Impersonation style (serious, sarcastic, flirty, or impersonate)
  * @param userId - User ID for persona/lorebook lookup
+ * @param conversationId - Optional conversation ID for world info lookup
  * @returns Generated user message content
  */
 export async function generateImpersonation(
@@ -233,7 +248,8 @@ export async function generateImpersonation(
 	character: Character,
 	settings: LlmSettingsLike,
 	style: ImpersonateStyle = 'impersonate',
-	userId?: number
+	userId?: number,
+	conversationId?: number
 ): Promise<string> {
 	// Parse character card data
 	let characterData: any = {};
@@ -256,6 +272,13 @@ export async function generateImpersonation(
 	// Load impersonate prompt from file based on style
 	const basePrompt = await loadImpersonatePromptFromFile(style);
 
+	// Get world info if conversation ID provided
+	let worldText = '';
+	if (conversationId) {
+		const worldInfo = await worldInfoService.getWorldInfo(conversationId);
+		worldText = worldInfoService.formatWorldInfoForPrompt(worldInfo, character.name, userName);
+	}
+
 	// Format conversation history as text
 	const historyText = conversationHistory
 		.map((msg) => {
@@ -271,7 +294,8 @@ export async function generateImpersonation(
 		user: userName,
 		personality: characterData.personality || '',
 		scenario: characterData.scenario || '',
-		description: character.description || characterData.description || ''
+		description: character.description || characterData.description || '',
+		world: worldText
 	};
 
 	// Replace variables in template
@@ -339,7 +363,13 @@ export async function generateImpersonation(
 	return content;
 }
 
-export type NarrationType = 'look_character' | 'look_scene' | 'narrate';
+export type NarrationType = 'look_character' | 'look_scene' | 'narrate' | 'look_item';
+
+export interface ItemContext {
+	owner: string;
+	itemName: string;
+	itemDescription: string;
+}
 
 /**
  * Load narration prompt from file
@@ -360,13 +390,17 @@ async function loadNarrationPromptFromFile(type: NarrationType): Promise<string>
  * @param character - Character card data
  * @param settings - User's LLM settings
  * @param narrateType - Type of narration to generate
+ * @param conversationId - Optional conversation ID for world info lookup
+ * @param itemContext - Optional item context for look_item action
  * @returns Generated narration content and reasoning
  */
 export async function generateNarration(
 	conversationHistory: Message[],
 	character: Character,
 	settings: LlmSettings,
-	narrateType: NarrationType
+	narrateType: NarrationType,
+	conversationId?: number,
+	itemContext?: ItemContext
 ): Promise<ChatCompletionResult> {
 	// Parse character card data
 	let characterData: any = {};
@@ -387,6 +421,13 @@ export async function generateNarration(
 	// Load narration prompt from file
 	const basePrompt = await loadNarrationPromptFromFile(narrateType);
 
+	// Get world info if conversation ID provided
+	let worldText = '';
+	if (conversationId) {
+		const worldInfo = await worldInfoService.getWorldInfo(conversationId);
+		worldText = worldInfoService.formatWorldInfoForPrompt(worldInfo, character.name, userName);
+	}
+
 	// Format conversation history as text
 	const historyText = conversationHistory
 		.map((msg) => {
@@ -402,13 +443,21 @@ export async function generateNarration(
 		user: userName,
 		personality: characterData.personality || '',
 		scenario: characterData.scenario || '',
-		description: character.description || characterData.description || ''
+		description: character.description || characterData.description || '',
+		world: worldText
 	};
 
 	// Replace variables in template
 	let narratorPrompt = replaceTemplateVariables(basePrompt, templateVariables);
 	// Replace history variable
 	narratorPrompt = narratorPrompt.replace(/\{\{history\}\}/g, historyText);
+	// Replace item context variables if present
+	if (itemContext) {
+		narratorPrompt = narratorPrompt
+			.replace(/\{\{item_owner\}\}/g, itemContext.owner)
+			.replace(/\{\{item_name\}\}/g, itemContext.itemName)
+			.replace(/\{\{item_description\}\}/g, itemContext.itemDescription);
+	}
 
 	// Format as system message
 	const formattedMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [

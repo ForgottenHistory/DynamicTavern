@@ -88,7 +88,8 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 				conversationHistory,
 				character,
 				settings,
-				'regenerate' // message type for logging
+				'regenerate', // message type for logging
+				conversation.id
 			);
 		} catch (genError) {
 			// Stop typing indicator on generation error

@@ -9,15 +9,16 @@ import {
 	removeAllListeners
 } from '$lib/stores/socket';
 import * as api from './chatActions';
+import {
+	createMessageActions,
+	createBranchActions,
+	createImageActions,
+	createClothesActions,
+	type Branch
+} from './state';
 
-export type { SceneActionType, ImpersonateStyle } from './chatActions';
-
-export interface Branch {
-	id: number;
-	name: string | null;
-	isActive: boolean;
-	createdAt: Date;
-}
+export type { SceneActionType, ImpersonateStyle, ClothesData } from './chatActions';
+export type { Branch } from './state';
 
 export interface ChatStateOptions {
 	characterId: number;
@@ -40,8 +41,6 @@ export function createChatState(options: ChatStateOptions) {
 	let sending = $state(false);
 	let regenerating = $state(false);
 	let impersonating = $state(false);
-	let generatingImage = $state(false);
-	let generatingSD = $state(false);
 
 	// Settings
 	let chatLayout = $state<'bubbles' | 'discord'>('bubbles');
@@ -60,7 +59,13 @@ export function createChatState(options: ChatStateOptions) {
 	let showBranchPanel = $state(false);
 	let creatingBranch = $state(false);
 
+	// Clothes state
+	let clothes = $state<api.ClothesData | null>(null);
+	let clothesLoading = $state(false);
+
 	// Image generation modal state
+	let generatingImage = $state(false);
+	let generatingSD = $state(false);
 	let showImageModal = $state(false);
 	let imageModalLoading = $state(false);
 	let imageModalTags = $state('');
@@ -78,6 +83,66 @@ export function createChatState(options: ChatStateOptions) {
 			localStorage.setItem('chatCharacterImageVisible', String(showCharacterImage));
 		}
 	});
+
+	// Create module actions
+	const messageActions = createMessageActions(
+		() => ({ messages, sending, regenerating, impersonating }),
+		(updates) => {
+			if (updates.messages !== undefined) messages = updates.messages;
+			if (updates.sending !== undefined) sending = updates.sending;
+			if (updates.regenerating !== undefined) regenerating = updates.regenerating;
+			if (updates.impersonating !== undefined) impersonating = updates.impersonating;
+		},
+		{
+			characterId: options.characterId,
+			conversationId: () => conversationId,
+			onSetInput: options.onSetInput,
+			loadConversation
+		}
+	);
+
+	const branchActions = createBranchActions(
+		() => ({ branches, activeBranchId, showBranchPanel, creatingBranch }),
+		(updates) => {
+			if (updates.branches !== undefined) branches = updates.branches;
+			if (updates.activeBranchId !== undefined) activeBranchId = updates.activeBranchId;
+			if (updates.showBranchPanel !== undefined) showBranchPanel = updates.showBranchPanel;
+			if (updates.creatingBranch !== undefined) creatingBranch = updates.creatingBranch;
+		},
+		{
+			characterId: options.characterId,
+			conversationId: () => conversationId,
+			loadConversation
+		}
+	);
+
+	const imageActions = createImageActions(
+		() => ({ generatingImage, generatingSD, showImageModal, imageModalLoading, imageModalTags, imageModalType }),
+		(updates) => {
+			if (updates.generatingImage !== undefined) generatingImage = updates.generatingImage;
+			if (updates.generatingSD !== undefined) generatingSD = updates.generatingSD;
+			if (updates.showImageModal !== undefined) showImageModal = updates.showImageModal;
+			if (updates.imageModalLoading !== undefined) imageModalLoading = updates.imageModalLoading;
+			if (updates.imageModalTags !== undefined) imageModalTags = updates.imageModalTags;
+			if (updates.imageModalType !== undefined) imageModalType = updates.imageModalType;
+		},
+		{
+			characterId: options.characterId,
+			conversationId: () => conversationId,
+			onScrollToBottom: options.onScrollToBottom
+		}
+	);
+
+	const clothesActions = createClothesActions(
+		() => ({ clothes, clothesLoading }),
+		(updates) => {
+			if (updates.clothes !== undefined) clothes = updates.clothes;
+			if (updates.clothesLoading !== undefined) clothesLoading = updates.clothesLoading;
+		},
+		{
+			characterId: options.characterId
+		}
+	);
 
 	// Settings handlers
 	async function loadSettings() {
@@ -114,6 +179,8 @@ export function createChatState(options: ChatStateOptions) {
 
 			if (conversationId) {
 				joinConversation(conversationId);
+				// Load saved clothes for existing conversation
+				clothesActions.loadClothes();
 			}
 
 			setTimeout(() => options.onScrollToBottom(), 100);
@@ -140,115 +207,12 @@ export function createChatState(options: ChatStateOptions) {
 		conversationId = newConversationId;
 		joinConversation(newConversationId);
 		await loadConversation();
+
+		// Generate clothes when conversation starts
+		clothesActions.generateClothes();
 	}
 
-	// Branch operations
-	async function createBranch(messageId: number, name?: string) {
-		if (creatingBranch) return;
-		creatingBranch = true;
-
-		try {
-			const success = await api.createBranch(options.characterId, messageId, name);
-			if (success) {
-				if (conversationId) {
-					leaveConversation(conversationId);
-				}
-				await loadConversation();
-			} else {
-				alert('Failed to create branch');
-			}
-		} finally {
-			creatingBranch = false;
-		}
-	}
-
-	async function switchBranch(branchId: number) {
-		if (branchId === activeBranchId) return;
-
-		const success = await api.switchBranch(options.characterId, branchId);
-		if (success) {
-			if (conversationId) {
-				leaveConversation(conversationId);
-			}
-			await loadConversation();
-		} else {
-			alert('Failed to switch branch');
-		}
-	}
-
-	async function deleteBranch(branchId: number) {
-		if (!confirm('Delete this branch? All messages will be lost.')) return;
-
-		const success = await api.deleteBranch(options.characterId, branchId);
-		if (success) {
-			if (branchId === activeBranchId && conversationId) {
-				leaveConversation(conversationId);
-			}
-			await loadConversation();
-		} else {
-			alert('Failed to delete branch');
-		}
-	}
-
-	// Message operations
-	async function sendMessage(userMessage: string) {
-		if (sending) return;
-		sending = true;
-
-		try {
-			const success = await api.sendMessage(options.characterId, userMessage);
-			if (!success) {
-				alert('Failed to send message');
-			}
-		} finally {
-			sending = false;
-		}
-	}
-
-	async function generateResponse() {
-		if (sending) return;
-		sending = true;
-
-		try {
-			const success = await api.generateResponse(options.characterId);
-			if (!success) {
-				alert('Failed to generate response');
-			}
-		} finally {
-			sending = false;
-		}
-	}
-
-	async function impersonate(style: api.ImpersonateStyle = 'impersonate') {
-		if (sending || impersonating) return;
-		impersonating = true;
-
-		try {
-			const content = await api.impersonate(options.characterId, style);
-			if (content) {
-				options.onSetInput(content);
-			} else {
-				alert('Failed to impersonate');
-			}
-		} finally {
-			impersonating = false;
-		}
-	}
-
-	async function handleSceneAction(actionType: api.SceneActionType) {
-		if (sending || !conversationId) return;
-		sending = true;
-
-		try {
-			const success = await api.triggerSceneAction(options.characterId, actionType);
-			if (!success) {
-				alert('Failed to execute action');
-			}
-		} finally {
-			sending = false;
-		}
-	}
-
+	// Conversation reset
 	async function resetConversation() {
 		if (!conversationId) return;
 
@@ -260,183 +224,6 @@ export function createChatState(options: ChatStateOptions) {
 			await loadConversation();
 		} else {
 			alert('Failed to reset conversation');
-		}
-	}
-
-	// Swipe operations
-	async function swipeMessage(messageId: number, direction: 'left' | 'right') {
-		const messageIndex = messages.findIndex(m => m.id === messageId);
-		if (messageIndex === -1) return;
-
-		const message = messages[messageIndex];
-		const swipes = api.getSwipes(message);
-		const currentIndex = api.getCurrentSwipeIndex(message);
-		const isFirstMessage = messageIndex === 0;
-
-		if (direction === 'right') {
-			const nextIndex = currentIndex + 1;
-
-			if (nextIndex < swipes.length) {
-				await updateSwipeIndex(messageId, messageIndex, message, swipes, nextIndex);
-			} else if (!isFirstMessage) {
-				await regenerateMessage(messageId);
-			} else {
-				await updateSwipeIndex(messageId, messageIndex, message, swipes, 0);
-			}
-		} else {
-			let newIndex = currentIndex - 1;
-			if (newIndex < 0) {
-				newIndex = swipes.length - 1;
-			}
-			await updateSwipeIndex(messageId, messageIndex, message, swipes, newIndex);
-		}
-	}
-
-	async function updateSwipeIndex(messageId: number, messageIndex: number, message: Message, swipes: string[], newIndex: number) {
-		const success = await api.updateSwipeIndex(messageId, newIndex);
-		if (success) {
-			const updatedMessage = {
-				...message,
-				content: swipes[newIndex],
-				currentSwipe: newIndex
-			};
-			messages[messageIndex] = updatedMessage;
-			messages = [...messages];
-		}
-	}
-
-	async function regenerateMessage(messageId: number) {
-		const messageIndex = messages.findIndex(m => m.id === messageId);
-		if (messageIndex === -1) return;
-
-		regenerating = true;
-
-		try {
-			const result = await api.regenerateMessage(messageId);
-			if (result) {
-				const message = messages[messageIndex];
-				const swipes = api.getSwipes(message);
-				swipes.push(result.content);
-
-				messages[messageIndex] = {
-					...message,
-					content: result.content,
-					swipes: JSON.stringify(swipes),
-					currentSwipe: swipes.length - 1
-				};
-				messages = [...messages];
-			} else {
-				alert('Failed to regenerate message');
-			}
-		} finally {
-			regenerating = false;
-		}
-	}
-
-	async function regenerateLastMessage() {
-		const lastAssistantMessage = [...messages].reverse().find(m => m.role === 'assistant');
-		if (!lastAssistantMessage) return;
-
-		const messageIndex = messages.findIndex(m => m.id === lastAssistantMessage.id);
-		if (messageIndex !== -1) {
-			messages = messages.slice(0, messageIndex);
-		}
-
-		const success = await api.regenerateFresh(lastAssistantMessage.id);
-		if (!success) {
-			await loadConversation();
-			alert('Failed to regenerate message');
-		}
-	}
-
-	async function deleteMessageAndBelow(messageId: number, messageIndex: number) {
-		const messagesBelow = messages.length - messageIndex;
-		const confirmed = confirm(`Delete this message and ${messagesBelow > 1 ? `${messagesBelow - 1} message(s) below it` : 'no messages below'}?`);
-		if (!confirmed) return;
-
-		const success = await api.deleteMessageAndBelow(messageId);
-		if (success) {
-			messages = messages.slice(0, messageIndex);
-		} else {
-			alert('Failed to delete messages');
-		}
-	}
-
-	async function saveMessageEdit(messageId: number, messageIndex: number, content: string) {
-		const result = await api.saveMessageEdit(messageId, content);
-		if (result) {
-			messages[messageIndex] = result;
-			messages = [...messages];
-		} else {
-			alert('Failed to save edit');
-		}
-	}
-
-	// Image generation
-	async function generateImage(type: 'character' | 'user' | 'scene' | 'raw') {
-		if (generatingImage || !conversationId) return;
-
-		imageModalType = type;
-		imageModalTags = '';
-		showImageModal = true;
-
-		if (type === 'raw') {
-			imageModalLoading = false;
-			return;
-		}
-
-		imageModalLoading = true;
-		generatingImage = true;
-
-		try {
-			const tags = await api.generateImageTags(options.characterId, type);
-			if (tags) {
-				imageModalTags = tags;
-			} else {
-				alert('Failed to generate tags');
-				showImageModal = false;
-			}
-		} finally {
-			imageModalLoading = false;
-			generatingImage = false;
-		}
-	}
-
-	async function handleImageGenerate(tags: string) {
-		if (generatingSD) return;
-		generatingSD = true;
-
-		try {
-			const success = await api.generateSDImage(options.characterId, tags);
-			if (success) {
-				showImageModal = false;
-				imageModalTags = '';
-				setTimeout(() => options.onScrollToBottom(), 100);
-			} else {
-				alert('Failed to generate image');
-			}
-		} finally {
-			generatingSD = false;
-		}
-	}
-
-	function handleImageCancel() {
-		imageModalTags = '';
-	}
-
-	async function handleImageRegenerate() {
-		imageModalTags = '';
-		imageModalLoading = true;
-
-		try {
-			const tags = await api.generateImageTags(options.characterId, imageModalType);
-			if (tags) {
-				imageModalTags = tags;
-			} else {
-				alert('Failed to regenerate tags');
-			}
-		} finally {
-			imageModalLoading = false;
 		}
 	}
 
@@ -478,10 +265,10 @@ export function createChatState(options: ChatStateOptions) {
 
 		if (e.key === 'ArrowLeft') {
 			e.preventDefault();
-			swipeMessage(lastAssistantMessage.id, 'left');
+			messageActions.swipeMessage(lastAssistantMessage.id, 'left');
 		} else if (e.key === 'ArrowRight') {
 			e.preventDefault();
-			swipeMessage(lastAssistantMessage.id, 'right');
+			messageActions.swipeMessage(lastAssistantMessage.id, 'right');
 		}
 	}
 
@@ -510,6 +297,8 @@ export function createChatState(options: ChatStateOptions) {
 		get activeBranchId() { return activeBranchId; },
 		get showBranchPanel() { return showBranchPanel; },
 		set showBranchPanel(value: boolean) { showBranchPanel = value; },
+		get clothes() { return clothes; },
+		get clothesLoading() { return clothesLoading; },
 		get showImageModal() { return showImageModal; },
 		set showImageModal(value: boolean) { showImageModal = value; },
 		get imageModalLoading() { return imageModalLoading; },
@@ -517,31 +306,22 @@ export function createChatState(options: ChatStateOptions) {
 		get imageModalType() { return imageModalType; },
 		get hasAssistantMessages() { return hasAssistantMessages; },
 
-		// Actions
+		// Core actions
 		loadSettings,
 		handleSettingsUpdate,
 		loadCharacter,
 		loadConversation,
 		handleCharacterChange,
 		handleScenarioStart,
-		createBranch,
-		switchBranch,
-		deleteBranch,
-		sendMessage,
-		generateResponse,
-		impersonate,
-		handleSceneAction,
 		resetConversation,
-		swipeMessage,
-		regenerateLastMessage,
-		deleteMessageAndBelow,
-		saveMessageEdit,
-		generateImage,
-		handleImageGenerate,
-		handleImageCancel,
-		handleImageRegenerate,
 		setupSocket,
 		cleanup,
-		handleKeydown
+		handleKeydown,
+
+		// Module actions
+		...messageActions,
+		...branchActions,
+		...imageActions,
+		generateClothes: clothesActions.generateClothes
 	};
 }

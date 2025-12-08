@@ -316,17 +316,70 @@ export async function saveMessageEdit(messageId: number, content: string): Promi
 	}
 }
 
-export async function triggerSceneAction(characterId: number, actionType: SceneActionType): Promise<boolean> {
+export interface ItemContext {
+	owner: string;
+	itemName: string;
+	itemDescription: string;
+}
+
+export async function triggerSceneAction(
+	characterId: number,
+	actionType: SceneActionType,
+	itemContext?: ItemContext
+): Promise<boolean> {
 	try {
 		const response = await fetch(`/api/chat/${characterId}/action`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ actionType })
+			body: JSON.stringify({ actionType, itemContext })
 		});
 		return response.ok;
 	} catch (error) {
 		console.error('Failed to trigger scene action:', error);
 		return false;
+	}
+}
+
+// Clothes generation
+export interface ClothingItem {
+	name: string;
+	description: string;
+}
+
+export interface ClothesData {
+	character: ClothingItem[];
+	user: ClothingItem[];
+}
+
+export async function generateClothes(characterId: number): Promise<ClothesData | null> {
+	try {
+		const response = await fetch(`/api/chat/${characterId}/clothes`, {
+			method: 'POST'
+		});
+		if (response.ok) {
+			return await response.json();
+		}
+		return null;
+	} catch (error) {
+		console.error('Failed to generate clothes:', error);
+		return null;
+	}
+}
+
+export async function getClothes(characterId: number): Promise<ClothesData | null> {
+	try {
+		const response = await fetch(`/api/chat/${characterId}/clothes`);
+		if (response.ok) {
+			const data = await response.json();
+			// Check if it's valid clothes data (not an error response)
+			if (data && data.character && data.user) {
+				return data;
+			}
+		}
+		return null;
+	} catch (error) {
+		console.error('Failed to get clothes:', error);
+		return null;
 	}
 }
 

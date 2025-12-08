@@ -49,15 +49,8 @@
 {#if show}
 	<div
 		class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-		onclick={(e) => {
-			if (e.target === e.currentTarget && !loading && !generating) handleClose();
-		}}
-		onkeydown={(e) => {
-			if (e.key === 'Escape' && !loading && !generating) handleClose();
-		}}
 		role="dialog"
 		aria-modal="true"
-		tabindex="-1"
 	>
 		<div class="bg-[var(--bg-secondary)] rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[var(--border-primary)]">
 			<h3 class="text-xl font-bold text-[var(--text-primary)] mb-2">

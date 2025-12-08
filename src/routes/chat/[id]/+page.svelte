@@ -6,6 +6,7 @@
 	import ChatInput from '$lib/components/chat/ChatInput.svelte';
 	import ChatCharacterImage from '$lib/components/chat/ChatCharacterImage.svelte';
 	import ChatBranchPanel from '$lib/components/chat/ChatBranchPanel.svelte';
+	import ChatClothesPanel from '$lib/components/chat/ChatClothesPanel.svelte';
 	import ImageGenerateModal from '$lib/components/chat/ImageGenerateModal.svelte';
 	import ScenarioSelector from '$lib/components/chat/ScenarioSelector.svelte';
 	import { onMount, onDestroy } from 'svelte';
@@ -67,63 +68,79 @@
 				onToggleBranches={() => state.showBranchPanel = !state.showBranchPanel}
 			/>
 
-			<!-- Chat Area with Character Image -->
-			<div class="flex-1 flex min-h-0 gap-4 p-4">
-				<!-- Left Side: Character Image -->
-				{#if state.character}
-					<ChatCharacterImage
-						character={state.character}
-						show={state.showCharacterImage}
-						onToggle={(show) => state.showCharacterImage = show}
-					/>
-				{/if}
+			<!-- Main content area with World sidebar -->
+			<div class="flex-1 flex min-h-0">
+				<!-- Left: Chat area (header area, messages, input) -->
+				<div class="flex-1 flex flex-col min-h-0">
+					<!-- Chat Area with Character Image -->
+					<div class="flex-1 flex min-h-0 gap-4 p-4">
+						<!-- Left Side: Character Image -->
+						{#if state.character}
+							<ChatCharacterImage
+								character={state.character}
+								show={state.showCharacterImage}
+								onToggle={(show) => state.showCharacterImage = show}
+							/>
+						{/if}
 
-				<!-- Messages Area -->
-				<ChatMessages
-					bind:this={chatMessages}
-					messages={state.messages}
-					loading={state.loading}
-					isTyping={state.isTyping}
-					generating={state.regenerating}
-					charName={state.character?.name}
-					userName={state.userName || data.user?.displayName}
-					charAvatar={state.character?.thumbnailData || state.character?.imageData}
-					userAvatar={state.userAvatar}
-					chatLayout={state.chatLayout}
-					avatarStyle={state.avatarStyle}
-					textCleanupEnabled={state.textCleanupEnabled}
-					autoWrapActions={state.autoWrapActions}
-					onSwipe={state.swipeMessage}
-					onSaveEdit={state.saveMessageEdit}
-					onDelete={state.deleteMessageAndBelow}
-					onBranch={state.createBranch}
+						<!-- Messages Area -->
+						<ChatMessages
+							bind:this={chatMessages}
+							messages={state.messages}
+							loading={state.loading}
+							isTyping={state.isTyping}
+							generating={state.regenerating}
+							charName={state.character?.name}
+							userName={state.userName || data.user?.displayName}
+							charAvatar={state.character?.thumbnailData || state.character?.imageData}
+							userAvatar={state.userAvatar}
+							chatLayout={state.chatLayout}
+							avatarStyle={state.avatarStyle}
+							textCleanupEnabled={state.textCleanupEnabled}
+							autoWrapActions={state.autoWrapActions}
+							onSwipe={state.swipeMessage}
+							onSaveEdit={state.saveMessageEdit}
+							onDelete={state.deleteMessageAndBelow}
+							onBranch={state.createBranch}
+						/>
+
+						<!-- Branch Panel -->
+						{#if state.showBranchPanel}
+							<ChatBranchPanel
+								branches={state.branches}
+								activeBranchId={state.activeBranchId}
+								onSwitch={state.switchBranch}
+								onDelete={state.deleteBranch}
+								onClose={() => state.showBranchPanel = false}
+							/>
+						{/if}
+					</div>
+
+					<ChatInput
+						bind:this={chatInput}
+						disabled={state.sending || state.regenerating}
+						hasAssistantMessages={state.hasAssistantMessages}
+						impersonating={state.impersonating}
+						generatingImage={state.generatingImage}
+						onSend={state.sendMessage}
+						onGenerate={state.generateResponse}
+						onRegenerate={state.regenerateLastMessage}
+						onImpersonate={state.impersonate}
+						onGenerateImage={state.generateImage}
+						onSceneAction={state.handleSceneAction}
+					/>
+				</div>
+
+				<!-- Right: World Panel (full height) -->
+				<ChatClothesPanel
+					characterName={state.character?.name ?? 'Character'}
+					userName={state.userName || data.user?.displayName || 'User'}
+					clothes={state.clothes}
+					loading={state.clothesLoading}
+					onRegenerate={state.generateClothes}
+					onLookAtItem={(owner, itemName, itemDescription) => state.handleSceneAction('look_item', { owner, itemName, itemDescription })}
 				/>
-
-				<!-- Branch Panel (Right Side) -->
-				{#if state.showBranchPanel}
-					<ChatBranchPanel
-						branches={state.branches}
-						activeBranchId={state.activeBranchId}
-						onSwitch={state.switchBranch}
-						onDelete={state.deleteBranch}
-						onClose={() => state.showBranchPanel = false}
-					/>
-				{/if}
 			</div>
-
-			<ChatInput
-				bind:this={chatInput}
-				disabled={state.sending || state.regenerating}
-				hasAssistantMessages={state.hasAssistantMessages}
-				impersonating={state.impersonating}
-				generatingImage={state.generatingImage}
-				onSend={state.sendMessage}
-				onGenerate={state.generateResponse}
-				onRegenerate={state.regenerateLastMessage}
-				onImpersonate={state.impersonate}
-				onGenerateImage={state.generateImage}
-				onSceneAction={state.handleSceneAction}
-			/>
 		{/if}
 	</div>
 </MainLayout>

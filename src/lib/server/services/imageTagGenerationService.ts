@@ -1,6 +1,7 @@
 import { imageLlmSettingsService } from './imageLlmSettingsService';
 import { callLlm } from './llmCallService';
 import { personaService } from './personaService';
+import { worldInfoService } from './worldInfoService';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -21,6 +22,9 @@ function replaceTemplateVariables(
 		image_tags: string;
 		contextual_tags: string;
 		tag_library: string;
+		world: string;
+		char_clothes: string;
+		user_clothes: string;
 	}
 ): string {
 	return template
@@ -31,7 +35,10 @@ function replaceTemplateVariables(
 		.replace(/\{\{history\}\}/g, variables.history)
 		.replace(/\{\{image_tags\}\}/g, variables.image_tags)
 		.replace(/\{\{contextual_tags\}\}/g, variables.contextual_tags)
-		.replace(/\{\{tag_library\}\}/g, variables.tag_library);
+		.replace(/\{\{tag_library\}\}/g, variables.tag_library)
+		.replace(/\{\{world\}\}/g, variables.world)
+		.replace(/\{\{char_clothes\}\}/g, variables.char_clothes)
+		.replace(/\{\{user_clothes\}\}/g, variables.user_clothes);
 }
 
 class ImageTagGenerationService {
@@ -88,6 +95,7 @@ class ImageTagGenerationService {
 	 * @param imageTags - Always included tags (character appearance - hair, eyes, body)
 	 * @param contextualTags - Character-specific tags the AI can choose from
 	 * @param userId - User ID for loading user-specific tag library
+	 * @param conversationId - Conversation ID for loading world info
 	 */
 	async generateTags({
 		conversationContext,
@@ -97,7 +105,8 @@ class ImageTagGenerationService {
 		imageTags = '',
 		contextualTags = '',
 		type = 'all',
-		userId
+		userId,
+		conversationId
 	}: {
 		conversationContext: string;
 		characterName?: string;
@@ -107,6 +116,7 @@ class ImageTagGenerationService {
 		contextualTags?: string;
 		type?: 'all' | 'character' | 'user' | 'scene';
 		userId?: number;
+		conversationId?: number;
 	}): Promise<{ generatedTags: string; alwaysTags: string; breakdown?: { character?: string; user?: string; scene?: string } }> {
 		try {
 			console.log(`🎨 Generating image tags (${type}) from conversation context...`);
@@ -119,14 +129,18 @@ class ImageTagGenerationService {
 				temperature: settings.temperature
 			});
 
-			// Load prompts, tag library, and user info (user-specific if userId provided)
-			const [prompts, tagLibrary, userInfo] = await Promise.all([
+			// Load prompts, tag library, user info, and world info
+			const [prompts, tagLibrary, userInfo, worldInfo] = await Promise.all([
 				this.loadPrompts(),
 				this.loadTagLibrary(userId),
-				userId ? personaService.getActiveUserInfo(userId) : Promise.resolve({ name: 'User', description: null, avatarData: null })
+				userId ? personaService.getActiveUserInfo(userId) : Promise.resolve({ name: 'User', description: null, avatarData: null }),
+				conversationId ? worldInfoService.getWorldInfo(conversationId) : Promise.resolve(null)
 			]);
 
 			const userName = userInfo.name;
+			const worldText = worldInfoService.formatWorldInfoForPrompt(worldInfo, characterName, userName);
+			const charClothesText = worldInfoService.formatCharacterClothesForPrompt(worldInfo, characterName);
+			const userClothesText = worldInfoService.formatUserClothesForPrompt(worldInfo, userName);
 
 			if (tagLibrary) {
 				console.log(`🎨 Loaded tag library for user ${userId} (${tagLibrary.split('\n').length} lines)`);
@@ -143,7 +157,10 @@ class ImageTagGenerationService {
 				history: conversationContext || '',
 				image_tags: imageTags || '',
 				contextual_tags: contextualTags || '',
-				tag_library: tagLibrary || ''
+				tag_library: tagLibrary || '',
+				world: worldText,
+				char_clothes: charClothesText,
+				user_clothes: userClothesText
 			};
 
 			// Replace template variables in prompts

@@ -147,7 +147,8 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 					conversationHistory,
 					character,
 					settings,
-					'swipe' // message type for logging
+					'swipe', // message type for logging
+					conversation.id
 				);
 				newContent = result.content;
 				newReasoning = result.reasoning;

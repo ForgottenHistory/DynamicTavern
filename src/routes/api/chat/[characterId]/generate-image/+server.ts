@@ -88,7 +88,8 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 			imageTags: character.imageTags || '',
 			contextualTags: character.contextualTags || '',
 			type: type as 'all' | 'character' | 'user' | 'scene',
-			userId: parseInt(userId)
+			userId: parseInt(userId),
+			conversationId: conversation.id
 		});
 
 		return json({

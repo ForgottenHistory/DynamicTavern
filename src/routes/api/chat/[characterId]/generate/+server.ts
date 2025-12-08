@@ -74,7 +74,8 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 				conversationHistory,
 				character,
 				settings,
-				'chat'
+				'chat',
+				conversation.id
 			);
 		} catch (genError) {
 			// Stop typing indicator on generation error
