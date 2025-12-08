@@ -68,6 +68,20 @@ async function loadImpersonatePromptFromFile(style: ImpersonateStyle = 'imperson
 	}
 }
 
+const WRITING_STYLE_FILE = path.join(PROMPTS_DIR, 'writing_style.txt');
+
+/**
+ * Load writing style from file
+ */
+async function loadWritingStyle(): Promise<string> {
+	try {
+		return await fs.readFile(WRITING_STYLE_FILE, 'utf-8');
+	} catch (error) {
+		// File doesn't exist, return empty
+		return '';
+	}
+}
+
 /**
  * Replace template variables with actual values
  */
@@ -80,6 +94,8 @@ function replaceTemplateVariables(
 		scenario: string;
 		description: string;
 		world?: string;
+		post_history?: string;
+		writing_style?: string;
 	}
 ): string {
 	return template
@@ -88,7 +104,9 @@ function replaceTemplateVariables(
 		.replace(/\{\{personality\}\}/g, variables.personality)
 		.replace(/\{\{scenario\}\}/g, variables.scenario)
 		.replace(/\{\{description\}\}/g, variables.description)
-		.replace(/\{\{world\}\}/g, variables.world || '');
+		.replace(/\{\{world\}\}/g, variables.world || '')
+		.replace(/\{\{post_history\}\}/g, variables.post_history || '')
+		.replace(/\{\{writing_style\}\}/g, variables.writing_style || '');
 }
 
 interface ChatCompletionResult {
@@ -139,6 +157,9 @@ export async function generateChatCompletion(
 		worldText = worldInfoService.formatWorldInfoForPrompt(worldInfo, character.name, userName);
 	}
 
+	// Get writing style from file
+	const writingStyle = await loadWritingStyle();
+
 	// Format conversation history as text
 	const historyText = conversationHistory
 		.map((msg) => {
@@ -155,7 +176,9 @@ export async function generateChatCompletion(
 		personality: characterData.personality || '',
 		scenario: characterData.scenario || '',
 		description: character.description || characterData.description || '',
-		world: worldText
+		world: worldText,
+		post_history: character.postHistory || '',
+		writing_style: writingStyle
 	};
 
 	// Replace variables in template
@@ -279,6 +302,9 @@ export async function generateImpersonation(
 		worldText = worldInfoService.formatWorldInfoForPrompt(worldInfo, character.name, userName);
 	}
 
+	// Get writing style from file
+	const writingStyle = await loadWritingStyle();
+
 	// Format conversation history as text
 	const historyText = conversationHistory
 		.map((msg) => {
@@ -295,7 +321,9 @@ export async function generateImpersonation(
 		personality: characterData.personality || '',
 		scenario: characterData.scenario || '',
 		description: character.description || characterData.description || '',
-		world: worldText
+		world: worldText,
+		post_history: character.postHistory || '',
+		writing_style: writingStyle
 	};
 
 	// Replace variables in template
@@ -428,6 +456,9 @@ export async function generateNarration(
 		worldText = worldInfoService.formatWorldInfoForPrompt(worldInfo, character.name, userName);
 	}
 
+	// Get writing style from file
+	const writingStyle = await loadWritingStyle();
+
 	// Format conversation history as text
 	const historyText = conversationHistory
 		.map((msg) => {
@@ -444,7 +475,9 @@ export async function generateNarration(
 		personality: characterData.personality || '',
 		scenario: characterData.scenario || '',
 		description: character.description || characterData.description || '',
-		world: worldText
+		world: worldText,
+		post_history: character.postHistory || '',
+		writing_style: writingStyle
 	};
 
 	// Replace variables in template

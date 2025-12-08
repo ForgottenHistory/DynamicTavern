@@ -175,6 +175,7 @@ export const characters = sqliteTable('characters', {
 	contextualTags: text('contextual_tags'), // AI chooses from these based on context
 	mainPromptOverride: text('main_prompt_override'), // Override global main prompt
 	negativePromptOverride: text('negative_prompt_override'), // Override global negative prompt
+	postHistory: text('post_history'), // Character-specific post history text (appears after conversation history)
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.$defaultFn(() => new Date())

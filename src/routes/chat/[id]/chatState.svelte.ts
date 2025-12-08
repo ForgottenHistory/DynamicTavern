@@ -71,6 +71,10 @@ export function createChatState(options: ChatStateOptions) {
 	let imageModalTags = $state('');
 	let imageModalType = $state<'character' | 'user' | 'scene' | 'raw'>('character');
 
+	// Post history modal state
+	let showPostHistoryModal = $state(false);
+	let postHistorySaving = $state(false);
+
 	// Track character changes
 	let previousCharacterId: number | null = null;
 
@@ -253,6 +257,37 @@ export function createChatState(options: ChatStateOptions) {
 		removeAllListeners();
 	}
 
+	// Post history handlers
+	function openPostHistoryModal() {
+		showPostHistoryModal = true;
+	}
+
+	async function savePostHistory(content: string) {
+		if (!character) return;
+		postHistorySaving = true;
+
+		try {
+			const response = await fetch(`/api/characters/${character.id}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ postHistory: content })
+			});
+
+			if (response.ok) {
+				// Update local character state
+				character = { ...character, postHistory: content };
+				showPostHistoryModal = false;
+			} else {
+				alert('Failed to save post history');
+			}
+		} catch (error) {
+			console.error('Failed to save post history:', error);
+			alert('Failed to save post history');
+		} finally {
+			postHistorySaving = false;
+		}
+	}
+
 	// Keyboard handler for swipe navigation
 	function handleKeydown(e: KeyboardEvent) {
 		const activeElement = document.activeElement;
@@ -305,6 +340,9 @@ export function createChatState(options: ChatStateOptions) {
 		get imageModalTags() { return imageModalTags; },
 		get imageModalType() { return imageModalType; },
 		get hasAssistantMessages() { return hasAssistantMessages; },
+		get showPostHistoryModal() { return showPostHistoryModal; },
+		set showPostHistoryModal(value: boolean) { showPostHistoryModal = value; },
+		get postHistorySaving() { return postHistorySaving; },
 
 		// Core actions
 		loadSettings,
@@ -322,6 +360,10 @@ export function createChatState(options: ChatStateOptions) {
 		...messageActions,
 		...branchActions,
 		...imageActions,
-		generateClothes: clothesActions.generateClothes
+		generateClothes: clothesActions.generateClothes,
+
+		// Post history actions
+		openPostHistoryModal,
+		savePostHistory
 	};
 }

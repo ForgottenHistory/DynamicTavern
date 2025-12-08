@@ -7,11 +7,11 @@
 		conversationId: number | null;
 		branchCount?: number;
 		onReset: () => void;
-		onBack: () => void;
 		onToggleBranches?: () => void;
+		onPostHistory?: () => void;
 	}
 
-	let { character, conversationId, branchCount = 0, onReset, onBack, onToggleBranches }: Props = $props();
+	let { character, conversationId, branchCount = 0, onReset, onToggleBranches, onPostHistory }: Props = $props();
 
 	// Load collapsed state from localStorage
 	let collapsed = $state(browser ? localStorage.getItem('chatHeaderCollapsed') !== 'false' : true);
@@ -197,6 +197,25 @@
 		class="fixed bg-[var(--bg-secondary)] backdrop-blur-md border border-[var(--border-primary)] rounded-xl shadow-xl py-1 min-w-[180px] z-[999]"
 		style="left: {menuPosition.x}px; top: {menuPosition.y}px;"
 	>
+		{#if onPostHistory}
+			<button
+				onclick={() => {
+					showMenu = false;
+					onPostHistory();
+				}}
+				class="w-full text-left px-4 py-2.5 text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-all font-medium flex items-center gap-2"
+			>
+				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+					/>
+				</svg>
+				Post History
+			</button>
+		{/if}
 		<button
 			onclick={() => {
 				showMenu = false;
@@ -230,23 +249,6 @@
 				/>
 			</svg>
 			Reset Conversation
-		</button>
-		<button
-			onclick={() => {
-				showMenu = false;
-				onBack();
-			}}
-			class="w-full text-left px-4 py-2.5 text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-all font-medium flex items-center gap-2"
-		>
-			<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M15 19l-7-7 7-7"
-				/>
-			</svg>
-			Back to Library
 		</button>
 	</div>
 {/if}

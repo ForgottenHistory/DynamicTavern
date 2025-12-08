@@ -8,6 +8,7 @@
 	import ChatBranchPanel from '$lib/components/chat/ChatBranchPanel.svelte';
 	import ChatClothesPanel from '$lib/components/chat/ChatClothesPanel.svelte';
 	import ImageGenerateModal from '$lib/components/chat/ImageGenerateModal.svelte';
+	import PostHistoryModal from '$lib/components/chat/PostHistoryModal.svelte';
 	import ScenarioSelector from '$lib/components/chat/ScenarioSelector.svelte';
 	import { onMount, onDestroy } from 'svelte';
 	import { createChatState } from './chatState.svelte';
@@ -64,8 +65,8 @@
 				conversationId={state.conversationId}
 				branchCount={state.branches.length}
 				onReset={state.resetConversation}
-				onBack={() => window.location.href = '/library'}
 				onToggleBranches={() => state.showBranchPanel = !state.showBranchPanel}
+				onPostHistory={state.openPostHistoryModal}
 			/>
 
 			<!-- Main content area with World sidebar -->
@@ -154,4 +155,12 @@
 	onGenerate={state.handleImageGenerate}
 	onRegenerate={state.handleImageRegenerate}
 	onCancel={state.handleImageCancel}
+/>
+
+<PostHistoryModal
+	bind:show={state.showPostHistoryModal}
+	postHistory={state.character?.postHistory || ''}
+	characterName={state.character?.name || 'Character'}
+	saving={state.postHistorySaving}
+	onSave={state.savePostHistory}
 />

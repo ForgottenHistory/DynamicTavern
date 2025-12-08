@@ -10,6 +10,7 @@
 	let avatarStyle = $state<'circle' | 'rounded'>('circle');
 	let textCleanupEnabled = $state(true);
 	let autoWrapActions = $state(false);
+	let writingStyle = $state('');
 	let loading = $state(true);
 
 	// Load settings on mount
@@ -19,13 +20,22 @@
 
 	async function loadSettings() {
 		try {
-			const res = await fetch('/api/settings');
-			if (res.ok) {
-				const data = await res.json();
+			const [settingsRes, writingStyleRes] = await Promise.all([
+				fetch('/api/settings'),
+				fetch('/api/writing-style')
+			]);
+
+			if (settingsRes.ok) {
+				const data = await settingsRes.json();
 				chatLayout = data.chatLayout || 'bubbles';
 				avatarStyle = data.avatarStyle || 'circle';
 				textCleanupEnabled = data.textCleanupEnabled ?? true;
 				autoWrapActions = data.autoWrapActions ?? false;
+			}
+
+			if (writingStyleRes.ok) {
+				const data = await writingStyleRes.json();
+				writingStyle = data.content || '';
 			}
 		} catch (err) {
 			console.error('Failed to load settings:', err);
@@ -39,18 +49,25 @@
 		message = null;
 
 		try {
-			const res = await fetch('/api/settings', {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions })
-			});
+			const [settingsRes, writingStyleRes] = await Promise.all([
+				fetch('/api/settings', {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions })
+				}),
+				fetch('/api/writing-style', {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ content: writingStyle })
+				})
+			]);
 
-			if (res.ok) {
+			if (settingsRes.ok && writingStyleRes.ok) {
 				message = { type: 'success', text: 'Settings saved successfully!' };
 				// Dispatch event so chat components can react
 				window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions } }));
 			} else {
-				const data = await res.json();
+				const data = await settingsRes.json();
 				message = { type: 'error', text: data.error || 'Failed to save settings' };
 			}
 		} catch (err) {
@@ -310,6 +327,23 @@
 									</label>
 								{/if}
 							</div>
+						</div>
+
+						<!-- Writing Style Section -->
+						<div>
+							<h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Writing Style</h2>
+							<p class="text-sm text-[var(--text-muted)] mb-4">
+								Instructions for how the AI should write responses. This applies to all characters.
+							</p>
+
+							<textarea
+								bind:value={writingStyle}
+								placeholder="Example: Write detailed, immersive responses with vivid descriptions. Focus on emotional reactions and body language. Keep responses between 2-4 paragraphs."
+								class="w-full h-32 bg-[var(--bg-tertiary)] text-[var(--text-primary)] placeholder-[var(--text-muted)] rounded-xl border border-[var(--border-primary)] p-4 resize-none focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] text-sm"
+							></textarea>
+							<p class="text-xs text-[var(--text-muted)] mt-2">
+								Use {"{{writing_style}}"} in your prompts to include this text. Saved to <code class="bg-[var(--bg-tertiary)] px-1 rounded">data/prompts/writing_style.txt</code>
+							</p>
 						</div>
 
 						<!-- Save Button -->
