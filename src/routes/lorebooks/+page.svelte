@@ -334,7 +334,7 @@
 </script>
 
 <svelte:head>
-	<title>Lorebooks | AI Chat</title>
+	<title>Lorebooks | DynamicTavern</title>
 </svelte:head>
 
 <MainLayout user={data.user} currentPath="/lorebooks">

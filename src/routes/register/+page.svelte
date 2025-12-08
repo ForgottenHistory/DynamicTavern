@@ -53,14 +53,14 @@
 </script>
 
 <svelte:head>
-	<title>Register | AI Chat</title>
+	<title>Register | DynamicTavern</title>
 </svelte:head>
 
 <div class="min-h-screen flex items-center justify-center bg-[var(--bg-primary)] px-4">
 	<div class="max-w-md w-full space-y-8">
 		<div>
 			<h2 class="text-center text-3xl font-bold text-[var(--text-primary)]">
-				AI Chat Template
+				DynamicTavern
 			</h2>
 			<p class="mt-2 text-center text-sm text-[var(--text-secondary)]">
 				Create your account

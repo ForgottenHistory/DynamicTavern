@@ -1,5 +1,5 @@
 <svelte:head>
-	<title>AI Chat Template</title>
+	<title>DynamicTavern</title>
 	<style>
 		* {
 			margin: 0;
@@ -25,8 +25,7 @@
 	<div style="text-align: center; padding: 0 64px; max-width: 100%;">
 		<!-- Main Title -->
 		<h1 style="font-size: 96px; font-weight: 700; margin-bottom: 24px; display: flex; align-items: center; justify-content: center; gap: 16px;">
-			<span class="gradient-text">AI Chat</span>
-			<span style="color: white;">Template</span>
+			<span class="gradient-text">DynamicTavern</span>
 		</h1>
 
 		<!-- Tagline -->

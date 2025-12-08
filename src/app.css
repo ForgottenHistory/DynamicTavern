@@ -1,44 +1,44 @@
 @import 'tailwindcss';
 
-/* Cool Dark Theme - CSS Custom Properties */
+/* Modern Dark Theme - Sleek Black & Electric Teal */
 :root {
 	/* Base backgrounds */
-	--bg-primary: #0f172a;      /* slate-900 */
-	--bg-secondary: #1e293b;    /* slate-800 */
-	--bg-tertiary: #334155;     /* slate-700 */
-	--bg-elevated: #1e293b;     /* slate-800 */
+	--bg-primary: #0a0a0a;      /* pure dark */
+	--bg-secondary: #121216;    /* dark with subtle cool tint */
+	--bg-tertiary: #1a1a1f;     /* medium dark */
+	--bg-elevated: #121216;     /* dark with subtle cool tint */
 
 	/* Text colors */
-	--text-primary: #ffffff;    /* white */
-	--text-secondary: #cbd5e1;  /* slate-300 */
-	--text-muted: #94a3b8;      /* slate-400 */
+	--text-primary: #f0f0f0;    /* soft white */
+	--text-secondary: #9ca3af;  /* cool gray */
+	--text-muted: #5b6270;      /* muted blue-gray */
 
 	/* Border colors */
-	--border-primary: #334155;  /* slate-700 */
-	--border-secondary: #475569; /* slate-600 */
+	--border-primary: #252530;  /* dark border with cool tint */
+	--border-secondary: #353542; /* lighter border */
 
 	/* Accent colors */
-	--accent-primary: #6366f1;  /* indigo-500 */
-	--accent-secondary: #8b5cf6; /* violet-500 */
-	--accent-hover: #818cf8;    /* indigo-400 */
+	--accent-primary: #14b8a6;  /* teal */
+	--accent-secondary: #06b6d4; /* cyan */
+	--accent-hover: #2dd4bf;    /* bright teal hover */
 
 	/* User message bubble */
-	--user-bubble-from: #4f46e5; /* indigo-600 */
-	--user-bubble-to: #7c3aed;   /* violet-600 */
+	--user-bubble-from: #0f766e; /* dark teal */
+	--user-bubble-to: #14b8a6;   /* teal */
 
 	/* Assistant message bubble */
-	--assistant-bubble: #1e293b; /* slate-800 */
-	--assistant-border: #334155; /* slate-700 */
+	--assistant-bubble: #121216; /* dark with subtle cool tint */
+	--assistant-border: #252530; /* dark border */
 
 	/* Status colors */
-	--success: #22c55e;         /* green-500 */
-	--warning: #f59e0b;         /* amber-500 */
-	--error: #ef4444;           /* red-500 */
+	--success: #22c55e;         /* green */
+	--warning: #f59e0b;         /* amber */
+	--error: #ef4444;           /* red */
 
 	/* Sidebar */
-	--sidebar-bg: #0f172a;      /* slate-900 */
-	--sidebar-hover: #1e293b;   /* slate-800 */
-	--sidebar-active: #334155;  /* slate-700 */
+	--sidebar-bg: #0a0a0a;      /* pure dark */
+	--sidebar-hover: #121216;   /* dark with subtle cool tint */
+	--sidebar-active: #1a1a1f;  /* medium dark */
 }
 
 /* Custom Scrollbar Styling */

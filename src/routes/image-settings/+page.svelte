@@ -115,7 +115,7 @@
 </script>
 
 <svelte:head>
-	<title>Image Generation Settings | AI Chat</title>
+	<title>Image Generation Settings | DynamicTavern</title>
 </svelte:head>
 
 <MainLayout user={data.user} currentPath="/image-settings">

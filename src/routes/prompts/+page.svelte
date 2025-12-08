@@ -354,7 +354,7 @@ Output ONLY comma-separated tags, no explanations.`
 </script>
 
 <svelte:head>
-	<title>Prompts | AI Chat</title>
+	<title>Prompts | DynamicTavern</title>
 </svelte:head>
 
 <MainLayout user={data.user} currentPath="/prompts">

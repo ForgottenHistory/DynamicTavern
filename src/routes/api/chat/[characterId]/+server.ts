@@ -1,9 +1,9 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { conversations, messages, characters } from '$lib/server/db/schema';
+import { conversations, messages } from '$lib/server/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 
-// GET - Get or create conversation and fetch messages
+// GET - Get conversation and fetch messages (no auto-create)
 export const GET: RequestHandler = async ({ params, cookies }) => {
 	const userId = cookies.get('userId');
 	if (!userId) {
@@ -50,48 +50,15 @@ export const GET: RequestHandler = async ({ params, cookies }) => {
 			}
 		}
 
-		// Create conversation if it doesn't exist
+		// If no conversation exists, return isNewChat flag
 		if (!conversation) {
-			[conversation] = await db
-				.insert(conversations)
-				.values({
-					userId: parseInt(userId),
-					characterId
-				})
-				.returning();
-
-			// Get character card to fetch first_mes
-			const [character] = await db
-				.select()
-				.from(characters)
-				.where(eq(characters.id, characterId))
-				.limit(1);
-
-			if (character && character.cardData) {
-				try {
-					const cardData = JSON.parse(character.cardData);
-					const firstMessage = cardData.data?.first_mes || cardData.first_mes;
-					const alternateGreetings = cardData.data?.alternate_greetings || cardData.alternate_greetings || [];
-
-					// Add first_mes as initial assistant message if it exists
-					if (firstMessage && firstMessage.trim()) {
-						// Build swipes array with first_mes and alternate_greetings
-						const swipes = [firstMessage.trim(), ...alternateGreetings.filter((g: string) => g && g.trim())];
-
-						await db.insert(messages).values({
-							conversationId: conversation.id,
-							role: 'assistant',
-							content: firstMessage.trim(),
-							swipes: swipes.length > 1 ? JSON.stringify(swipes) : null,
-							currentSwipe: 0,
-							senderName: character.name,
-							senderAvatar: character.thumbnailData || character.imageData
-						});
-					}
-				} catch (parseError) {
-					console.error('Failed to parse character card data:', parseError);
-				}
-			}
+			return json({
+				isNewChat: true,
+				conversationId: null,
+				messages: [],
+				branches: [],
+				activeBranchId: null
+			});
 		}
 
 		// Fetch messages for this conversation
@@ -114,6 +81,7 @@ export const GET: RequestHandler = async ({ params, cookies }) => {
 			.orderBy(desc(conversations.createdAt));
 
 		return json({
+			isNewChat: false,
 			conversationId: conversation.id,
 			conversationName: conversation.name,
 			messages: conversationMessages,

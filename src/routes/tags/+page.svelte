@@ -221,7 +221,7 @@
 </script>
 
 <svelte:head>
-	<title>Tags | AI Chat</title>
+	<title>Tags | DynamicTavern</title>
 </svelte:head>
 
 <MainLayout user={data.user} currentPath="/tags">

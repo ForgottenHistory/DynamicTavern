@@ -6,7 +6,7 @@
 </script>
 
 <svelte:head>
-	<title>AI Chat</title>
+	<title>DynamicTavern</title>
 </svelte:head>
 
 <MainLayout user={data.user} currentPath="/">

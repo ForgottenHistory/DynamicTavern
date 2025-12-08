@@ -128,7 +128,7 @@
 		<!-- Logo/Brand -->
 		<div class="p-6 border-b border-[var(--border-primary)]">
 			<h1 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)]">
-				AI Chat
+				DynamicTavern
 			</h1>
 		</div>
 

@@ -269,7 +269,7 @@
 </script>
 
 <svelte:head>
-	<title>Settings | AI Chat</title>
+	<title>Settings | DynamicTavern</title>
 </svelte:head>
 
 <MainLayout user={data.user} currentPath="/settings">

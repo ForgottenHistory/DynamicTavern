@@ -5,7 +5,7 @@ import path from 'path';
 
 const PROMPTS_DIR = 'data/prompts';
 
-export type ContentType = 'description' | 'personality' | 'scenario' | 'message_example' | 'greeting';
+export type ContentType = 'description' | 'personality' | 'scenario' | 'message_example' | 'greeting' | 'scenario_greeting';
 
 class ContentLlmService {
 	/**
@@ -18,6 +18,56 @@ class ContentLlmService {
 		} catch (error) {
 			console.error(`Failed to load content prompt for ${type}, using default:`, error);
 			return `Rewrite the following ${type.replace('_', ' ')} to be clean and well-formatted:\n\n{{input}}\n\nRewritten:`;
+		}
+	}
+
+	/**
+	 * Generate a custom greeting based on a scenario
+	 */
+	async generateScenarioGreeting({
+		userId,
+		characterName,
+		characterDescription,
+		characterPersonality,
+		scenario,
+		userName
+	}: {
+		userId: number;
+		characterName: string;
+		characterDescription: string;
+		characterPersonality: string;
+		scenario: string;
+		userName: string;
+	}): Promise<string> {
+		try {
+			console.log(`📝 Content LLM generating scenario greeting for ${characterName}...`);
+
+			// Get user's Content LLM settings
+			const settings = await contentLlmSettingsService.getUserSettings(userId);
+
+			// Load prompt template
+			const promptTemplate = await this.loadPrompt('scenario_greeting');
+
+			// Replace all placeholders
+			const prompt = promptTemplate
+				.replace(/\{\{char\}\}/gi, characterName)
+				.replace(/\{\{description\}\}/gi, characterDescription || 'No description provided')
+				.replace(/\{\{personality\}\}/gi, characterPersonality || 'No personality provided')
+				.replace(/\{\{scenario\}\}/gi, scenario)
+				.replace(/\{\{user\}\}/gi, userName);
+
+			// Call LLM
+			const response = await this.callContentLLM({
+				messages: [{ role: 'user', content: prompt }],
+				settings,
+				contentType: 'scenario_greeting'
+			});
+
+			console.log(`📝 Content LLM finished generating scenario greeting`);
+			return response.trim();
+		} catch (error: any) {
+			console.error(`❌ Content LLM failed to generate scenario greeting:`, error.message);
+			throw error;
 		}
 	}
 

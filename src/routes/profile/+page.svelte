@@ -304,7 +304,7 @@
 </script>
 
 <svelte:head>
-	<title>Profiles | AI Chat</title>
+	<title>Profiles | DynamicTavern</title>
 </svelte:head>
 
 <MainLayout user={data.user} currentPath="/profile">

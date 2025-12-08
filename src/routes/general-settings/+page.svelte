@@ -58,7 +58,7 @@
 </script>
 
 <svelte:head>
-	<title>General Settings | AI Chat</title>
+	<title>General Settings | DynamicTavern</title>
 </svelte:head>
 
 <MainLayout user={data.user} currentPath="/general-settings">

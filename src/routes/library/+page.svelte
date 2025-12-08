@@ -133,7 +133,7 @@
 </script>
 
 <svelte:head>
-	<title>Library | AI Chat</title>
+	<title>Library | DynamicTavern</title>
 </svelte:head>
 
 <MainLayout user={data.user} currentPath="/library">

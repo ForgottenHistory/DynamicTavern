@@ -1,10 +1,10 @@
-# AI Chat Template
+# DynamicTavern
 
 A personal-use template for AI character chat applications. Designed to either work standalone or serve as a base for forking into other projects.
 
 Derived from an AI dating app I made, check it out: https://github.com/ForgottenHistory/Cupid-AI
 
-![AI Chat](images/chat.png)
+![DynamicTavern](images/chat.png)
 
 ## Features
 
@@ -64,7 +64,7 @@ Separate LLM configurations for different purposes:
 - **File-Based Prompts** - Edit system prompts through the UI or directly in `data/prompts/`
 - **Logging** - View last 5 prompts/responses per LLM type for debugging
 
-![AI Chat](images/character_profile.png)
+![DynamicTavern](images/character_profile.png)
 
 ## Tech Stack
 
