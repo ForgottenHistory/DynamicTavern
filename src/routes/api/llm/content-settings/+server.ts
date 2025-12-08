@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { contentLlmSettingsService } from '$lib/server/services/contentLlmSettingsService';
+import { llmSettingsFileService } from '$lib/server/services/llmSettingsFileService';
 
 export const GET: RequestHandler = async ({ cookies }) => {
 	try {
@@ -10,7 +10,7 @@ export const GET: RequestHandler = async ({ cookies }) => {
 			return json({ error: 'Not authenticated' }, { status: 401 });
 		}
 
-		const settings = await contentLlmSettingsService.getUserSettings(parseInt(userId));
+		const settings = llmSettingsFileService.getSettings('content');
 
 		return json({ settings });
 	} catch (error: any) {
@@ -29,7 +29,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 		const body = await request.json();
 
-		const settings = await contentLlmSettingsService.updateUserSettings(parseInt(userId), body);
+		const settings = llmSettingsFileService.updateSettings('content', body);
 
 		return json({ settings, message: 'Settings updated successfully' });
 	} catch (error: any) {

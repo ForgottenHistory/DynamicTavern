@@ -25,14 +25,12 @@ class ContentLlmService {
 	 * Generate a custom greeting based on a scenario
 	 */
 	async generateScenarioGreeting({
-		userId,
 		characterName,
 		characterDescription,
 		characterPersonality,
 		scenario,
 		userName
 	}: {
-		userId: number;
 		characterName: string;
 		characterDescription: string;
 		characterPersonality: string;
@@ -42,8 +40,8 @@ class ContentLlmService {
 		try {
 			console.log(`📝 Content LLM generating scenario greeting for ${characterName}...`);
 
-			// Get user's Content LLM settings
-			const settings = await contentLlmSettingsService.getUserSettings(userId);
+			// Get Content LLM settings from file
+			const settings = contentLlmSettingsService.getSettings();
 
 			// Load prompt template
 			const promptTemplate = await this.loadPrompt('scenario_greeting');
@@ -75,19 +73,17 @@ class ContentLlmService {
 	 * Rewrite character metadata using Content LLM
 	 */
 	async rewriteContent({
-		userId,
 		type,
 		input
 	}: {
-		userId: number;
 		type: ContentType;
 		input: string;
 	}): Promise<string> {
 		try {
 			console.log(`📝 Content LLM rewriting ${type}...`);
 
-			// Get user's Content LLM settings
-			const settings = await contentLlmSettingsService.getUserSettings(userId);
+			// Get Content LLM settings from file
+			const settings = contentLlmSettingsService.getSettings();
 			console.log(`📝 Using Content LLM settings:`, {
 				provider: settings.provider,
 				model: settings.model,

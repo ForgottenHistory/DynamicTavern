@@ -21,7 +21,6 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		}
 
 		const result = await imageTagGenerationService.generateTags({
-			userId: parseInt(userId),
 			conversationContext,
 			characterName: characterName || '',
 			imageTags: imageTags || '', // Always included tags (character appearance)

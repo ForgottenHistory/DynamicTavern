@@ -1,9 +1,7 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
-import { llmPresets } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { llmSettingsFileService } from '$lib/server/services/llmSettingsFileService';
 
-// GET - Fetch all LLM presets for user
+// GET - Fetch all LLM presets
 export const GET: RequestHandler = async ({ cookies }) => {
 	const userId = cookies.get('userId');
 	if (!userId) {
@@ -11,12 +9,7 @@ export const GET: RequestHandler = async ({ cookies }) => {
 	}
 
 	try {
-		const presets = await db
-			.select()
-			.from(llmPresets)
-			.where(eq(llmPresets.userId, parseInt(userId)))
-			.orderBy(llmPresets.createdAt);
-
+		const presets = llmSettingsFileService.getAllPresets();
 		return json({ presets });
 	} catch (error) {
 		console.error('Failed to fetch LLM presets:', error);
@@ -24,7 +17,7 @@ export const GET: RequestHandler = async ({ cookies }) => {
 	}
 };
 
-// POST - Create new LLM preset
+// POST - Create or update LLM preset
 export const POST: RequestHandler = async ({ request, cookies }) => {
 	const userId = cookies.get('userId');
 	if (!userId) {
@@ -32,71 +25,13 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 	}
 
 	try {
-		const {
-			name,
-			provider,
-			model,
-			temperature,
-			maxTokens,
-			topP,
-			frequencyPenalty,
-			presencePenalty,
-			contextWindow,
-			reasoningEnabled
-		} = await request.json();
+		const body = await request.json();
 
-		if (!name) {
+		if (!body.name) {
 			return json({ error: 'Preset name is required' }, { status: 400 });
 		}
 
-		const userIdNum = parseInt(userId);
-
-		// Check if preset with same name exists for this user
-		const existing = await db
-			.select()
-			.from(llmPresets)
-			.where(and(eq(llmPresets.userId, userIdNum), eq(llmPresets.name, name)))
-			.limit(1);
-
-		let preset;
-		if (existing[0]) {
-			// Update existing preset
-			const [updated] = await db
-				.update(llmPresets)
-				.set({
-					provider,
-					model,
-					temperature,
-					maxTokens,
-					topP,
-					frequencyPenalty,
-					presencePenalty,
-					contextWindow,
-					reasoningEnabled: reasoningEnabled ?? false
-				})
-				.where(eq(llmPresets.id, existing[0].id))
-				.returning();
-			preset = updated;
-		} else {
-			// Create new preset
-			const [created] = await db
-				.insert(llmPresets)
-				.values({
-					userId: userIdNum,
-					name,
-					provider,
-					model,
-					temperature,
-					maxTokens,
-					topP,
-					frequencyPenalty,
-					presencePenalty,
-					contextWindow,
-					reasoningEnabled: reasoningEnabled ?? false
-				})
-				.returning();
-			preset = created;
-		}
+		const preset = llmSettingsFileService.savePreset(body);
 
 		return json({ preset }, { status: 201 });
 	} catch (error) {

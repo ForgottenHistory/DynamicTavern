@@ -81,7 +81,6 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 
 			// Generate custom greeting using Content LLM
 			greetingContent = await contentLlmService.generateScenarioGreeting({
-				userId: parseInt(userId),
 				characterName: character.name,
 				characterDescription: character.description || data.description || '',
 				characterPersonality: data.personality || '',

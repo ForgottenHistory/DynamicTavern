@@ -70,7 +70,6 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 
 		// Generate tags
 		const result = await imageTagGenerationService.generateTags({
-			userId: parseInt(userId),
 			conversationContext,
 			characterName: character.name,
 			imageTags: character.imageTags || '',

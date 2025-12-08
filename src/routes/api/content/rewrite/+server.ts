@@ -22,7 +22,6 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		}
 
 		const rewritten = await contentLlmService.rewriteContent({
-			userId: parseInt(userId),
 			type,
 			input
 		});

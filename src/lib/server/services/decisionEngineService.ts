@@ -28,19 +28,17 @@ class DecisionEngineService {
 	 * Analyze conversation and make a decision about sending an image
 	 */
 	async analyzeForImageDecision({
-		userId,
 		conversationContext,
 		lastImageTimestamp
 	}: {
-		userId: number;
 		conversationContext: string;
 		lastImageTimestamp?: Date | null;
 	}): Promise<DecisionResult> {
 		try {
 			console.log('🧠 Decision Engine analyzing conversation...');
 
-			// Get user's Decision LLM settings
-			const settings = await decisionEngineSettingsService.getUserSettings(userId);
+			// Get Decision LLM settings from file
+			const settings = decisionEngineSettingsService.getSettings();
 			console.log(`🧠 Using Decision LLM settings:`, {
 				provider: settings.provider,
 				model: settings.model,

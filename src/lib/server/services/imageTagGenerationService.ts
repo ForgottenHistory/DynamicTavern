@@ -38,15 +38,15 @@ class ImageTagGenerationService {
 	}
 
 	/**
-	 * Load tag library for a user (always reads fresh from disk)
+	 * Load tag library (always reads fresh from disk)
 	 */
-	async loadTagLibrary(userId: number): Promise<string> {
+	async loadTagLibrary(): Promise<string> {
 		try {
-			const filePath = path.join(TAG_LIBRARY_DIR, `tags_${userId}.txt`);
+			const filePath = path.join(TAG_LIBRARY_DIR, 'tags.txt');
 			const content = await fs.readFile(filePath, 'utf-8');
 			return content;
 		} catch (error) {
-			console.log('No tag library found for user, using empty');
+			console.log('No tag library found, using empty');
 			return '';
 		}
 	}
@@ -59,14 +59,12 @@ class ImageTagGenerationService {
 	 * @param contextualTags - Character-specific tags the AI can choose from
 	 */
 	async generateTags({
-		userId,
 		conversationContext,
 		characterName = '',
 		imageTags = '',
 		contextualTags = '',
 		type = 'all'
 	}: {
-		userId: number;
 		conversationContext: string;
 		characterName?: string;
 		imageTags?: string;
@@ -76,8 +74,8 @@ class ImageTagGenerationService {
 		try {
 			console.log(`🎨 Generating image tags (${type}) from conversation context...`);
 
-			// Get user's Image LLM settings
-			const settings = await imageLlmSettingsService.getUserSettings(userId);
+			// Get Image LLM settings from file
+			const settings = imageLlmSettingsService.getSettings();
 			console.log(`🎨 Using Image LLM settings:`, {
 				provider: settings.provider,
 				model: settings.model,
@@ -87,7 +85,7 @@ class ImageTagGenerationService {
 			// Load prompts and tag library
 			const [prompts, tagLibrary] = await Promise.all([
 				this.loadPrompts(),
-				this.loadTagLibrary(userId)
+				this.loadTagLibrary()
 			]);
 
 			// Build base context for all prompts

@@ -1,7 +1,5 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
-import { llmPresets } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { llmSettingsFileService } from '$lib/server/services/llmSettingsFileService';
 
 // DELETE - Delete LLM preset
 export const DELETE: RequestHandler = async ({ params, cookies }) => {
@@ -10,24 +8,17 @@ export const DELETE: RequestHandler = async ({ params, cookies }) => {
 		return json({ error: 'Not authenticated' }, { status: 401 });
 	}
 
-	const presetId = parseInt(params.id);
-	if (isNaN(presetId)) {
+	const presetId = params.id;
+	if (!presetId) {
 		return json({ error: 'Invalid preset ID' }, { status: 400 });
 	}
 
 	try {
-		// Verify ownership
-		const [existing] = await db
-			.select()
-			.from(llmPresets)
-			.where(and(eq(llmPresets.id, presetId), eq(llmPresets.userId, parseInt(userId))))
-			.limit(1);
+		const deleted = llmSettingsFileService.deletePreset(presetId);
 
-		if (!existing) {
+		if (!deleted) {
 			return json({ error: 'Preset not found' }, { status: 404 });
 		}
-
-		await db.delete(llmPresets).where(eq(llmPresets.id, presetId));
 
 		return json({ success: true });
 	} catch (error) {

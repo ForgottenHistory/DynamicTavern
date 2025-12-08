@@ -99,12 +99,10 @@ class LlmService {
 	 * Create a chat completion with retry logic and queueing
 	 */
 	async createChatCompletion(params: ChatCompletionParams): Promise<ChatCompletionResponse> {
-		const { messages, userId, model, temperature, maxTokens } = params;
+		const { messages, model, temperature, maxTokens } = params;
 
-		// Get user settings or defaults
-		const userSettings = userId
-			? await llmSettingsService.getUserSettings(userId)
-			: llmSettingsService.getDefaultSettings();
+		// Get settings from file
+		const userSettings = llmSettingsService.getSettings();
 
 		const selectedModel = model || userSettings.model;
 		const selectedTemperature = temperature ?? userSettings.temperature;
