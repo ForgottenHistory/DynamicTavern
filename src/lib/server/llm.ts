@@ -24,9 +24,15 @@ const DEFAULT_IMPERSONATE_PROMPT = `Write the next message as {{user}} in this r
 
 Stay in character as {{user}}. Write a natural response that fits the conversation flow.`;
 
+const DEFAULT_NARRATION_PROMPTS: Record<string, string> = {
+	look_character: `You are a narrator. Briefly describe {{char}}'s current appearance and expression. Keep it to 2-3 sentences.`,
+	look_scene: `You are a narrator. Briefly describe the current environment. Keep it to 2-3 sentences.`,
+	narrate: `You are a narrator. Briefly describe what is happening in the scene. Keep it to 2-3 sentences.`
+};
+
 const PROMPTS_DIR = path.join(process.cwd(), 'data', 'prompts');
-const SYSTEM_PROMPT_FILE = path.join(PROMPTS_DIR, 'system.txt');
-const IMPERSONATE_PROMPT_FILE = path.join(PROMPTS_DIR, 'impersonate.txt');
+const SYSTEM_PROMPT_FILE = path.join(PROMPTS_DIR, 'chat_system.txt');
+const IMPERSONATE_PROMPT_FILE = path.join(PROMPTS_DIR, 'chat_impersonate.txt');
 
 /**
  * Load system prompt from file
@@ -112,17 +118,28 @@ export async function generateChatCompletion(
 	// Load system prompt from file
 	const basePrompt = await loadSystemPromptFromFile();
 
+	// Format conversation history as text
+	const historyText = conversationHistory
+		.map((msg) => {
+			const name = msg.role === 'user' ? userName : (msg.role === 'system' ? 'System' : character.name);
+			return `${name}: ${msg.content}`;
+		})
+		.join('\n\n');
+
 	// Prepare template variables
+	// Use character.description (top-level) if available, otherwise fall back to cardData.description
 	const templateVariables = {
 		char: character.name || 'Character',
 		user: userName,
 		personality: characterData.personality || '',
 		scenario: characterData.scenario || '',
-		description: characterData.description || ''
+		description: character.description || characterData.description || ''
 	};
 
 	// Replace variables in template
-	const systemPrompt = replaceTemplateVariables(basePrompt, templateVariables);
+	let systemPrompt = replaceTemplateVariables(basePrompt, templateVariables);
+	// Replace history variable
+	systemPrompt = systemPrompt.replace(/\{\{history\}\}/g, historyText);
 
 	// Add example dialogues if present (after template)
 	let finalSystemPrompt = systemPrompt;
@@ -145,22 +162,13 @@ export async function generateChatCompletion(
 		finalSystemPrompt += `\n\n${lorebookContext}`;
 	}
 
-	// Format conversation history for LLM
-	const formattedMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
-
-	// Add system prompt
-	formattedMessages.push({
-		role: 'system',
-		content: finalSystemPrompt.trim()
-	});
-
-	// Add conversation history
-	for (const msg of conversationHistory) {
-		formattedMessages.push({
-			role: msg.role as 'user' | 'assistant',
-			content: msg.content
-		});
-	}
+	// Format as single user message
+	const formattedMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+		{
+			role: 'user',
+			content: finalSystemPrompt.trim()
+		}
+	];
 
 	// Log prompt for debugging (keep last 5 per type)
 	const logId = llmLogService.savePromptLog(
@@ -235,17 +243,28 @@ export async function generateImpersonation(
 	// Load impersonate prompt from file
 	const basePrompt = await loadImpersonatePromptFromFile();
 
+	// Format conversation history as text
+	const historyText = conversationHistory
+		.map((msg) => {
+			const name = msg.role === 'user' ? userName : (msg.role === 'system' ? 'System' : character.name);
+			return `${name}: ${msg.content}`;
+		})
+		.join('\n\n');
+
 	// Prepare template variables
+	// Use character.description (top-level) if available, otherwise fall back to cardData.description
 	const templateVariables = {
 		char: character.name || 'Character',
 		user: userName,
 		personality: characterData.personality || '',
 		scenario: characterData.scenario || '',
-		description: characterData.description || ''
+		description: character.description || characterData.description || ''
 	};
 
 	// Replace variables in template
 	let impersonatePrompt = replaceTemplateVariables(basePrompt, templateVariables);
+	// Replace history variable
+	impersonatePrompt = impersonatePrompt.replace(/\{\{history\}\}/g, historyText);
 
 	// Add lorebook/world info context based on conversation keywords
 	const lorebookContext = await lorebookService.buildLorebookContext(
@@ -257,22 +276,13 @@ export async function generateImpersonation(
 		impersonatePrompt += `\n\n${lorebookContext}`;
 	}
 
-	// Format conversation history for LLM
-	const formattedMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
-
-	// Add impersonate prompt as system message
-	formattedMessages.push({
-		role: 'system',
-		content: impersonatePrompt.trim()
-	});
-
-	// Add conversation history
-	for (const msg of conversationHistory) {
-		formattedMessages.push({
-			role: msg.role as 'user' | 'assistant',
-			content: msg.content
-		});
-	}
+	// Format as single user message
+	const formattedMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+		{
+			role: 'user',
+			content: impersonatePrompt.trim()
+		}
+	];
 
 	// Log prompt for debugging
 	const logId = llmLogService.savePromptLog(
@@ -309,4 +319,123 @@ export async function generateImpersonation(
 	llmLogService.saveResponseLog(response.content, response.content, 'impersonate', logId, response);
 
 	return response.content;
+}
+
+export type NarrationType = 'look_character' | 'look_scene' | 'narrate';
+
+/**
+ * Load narration prompt from file
+ */
+async function loadNarrationPromptFromFile(type: NarrationType): Promise<string> {
+	try {
+		const filePath = path.join(PROMPTS_DIR, `action_${type}.txt`);
+		return await fs.readFile(filePath, 'utf-8');
+	} catch (error) {
+		// File doesn't exist, return default
+		return DEFAULT_NARRATION_PROMPTS[type] || DEFAULT_NARRATION_PROMPTS.narrate;
+	}
+}
+
+/**
+ * Generate a scene narration (system perspective, not character)
+ * @param conversationHistory - Array of previous messages in the conversation
+ * @param character - Character card data
+ * @param settings - User's LLM settings
+ * @param narrateType - Type of narration to generate
+ * @returns Generated narration content and reasoning
+ */
+export async function generateNarration(
+	conversationHistory: Message[],
+	character: Character,
+	settings: LlmSettings,
+	narrateType: NarrationType
+): Promise<ChatCompletionResult> {
+	// Parse character card data
+	let characterData: any = {};
+	try {
+		characterData = JSON.parse(character.cardData);
+		if (characterData.data) {
+			characterData = characterData.data;
+		}
+	} catch (error) {
+		console.error('Failed to parse character card data:', error);
+		throw new Error('Invalid character card data');
+	}
+
+	// Get active user info
+	const userInfo = await personaService.getActiveUserInfo(settings.userId);
+	const userName = userInfo.name;
+
+	// Load narration prompt from file
+	const basePrompt = await loadNarrationPromptFromFile(narrateType);
+
+	// Format conversation history as text
+	const historyText = conversationHistory
+		.map((msg) => {
+			const name = msg.role === 'user' ? userName : (msg.role === 'system' ? 'System' : character.name);
+			return `${name}: ${msg.content}`;
+		})
+		.join('\n\n');
+
+	// Prepare template variables
+	// Use character.description (top-level) if available, otherwise fall back to cardData.description
+	const templateVariables = {
+		char: character.name || 'Character',
+		user: userName,
+		personality: characterData.personality || '',
+		scenario: characterData.scenario || '',
+		description: character.description || characterData.description || ''
+	};
+
+	// Replace variables in template
+	let narratorPrompt = replaceTemplateVariables(basePrompt, templateVariables);
+	// Replace history variable
+	narratorPrompt = narratorPrompt.replace(/\{\{history\}\}/g, historyText);
+
+	// Format as single user message
+	const formattedMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+		{
+			role: 'user',
+			content: narratorPrompt.trim()
+		}
+	];
+
+	// Log prompt for debugging
+	const logId = llmLogService.savePromptLog(
+		formattedMessages,
+		'action',
+		character.name || 'Character',
+		userName
+	);
+
+	logger.info(`Generating narration (${narrateType})`, {
+		character: character.name,
+		user: userName,
+		model: settings.model,
+		messageCount: formattedMessages.length
+	});
+
+	// Call LLM service
+	const response = await llmService.createChatCompletion({
+		messages: formattedMessages,
+		userId: settings.userId,
+		model: settings.model,
+		temperature: settings.temperature,
+		maxTokens: settings.maxTokens
+	});
+
+	logger.success(`Generated narration (${narrateType})`, {
+		character: character.name,
+		model: response.model,
+		contentLength: response.content.length,
+		tokensUsed: response.usage?.total_tokens
+	});
+
+	// Log response for debugging
+	llmLogService.saveResponseLog(response.content, response.content, 'action', logId, response);
+
+	return {
+		content: response.content,
+		reasoning: response.reasoning || null
+	};
 }

@@ -303,6 +303,22 @@ export async function saveMessageEdit(messageId: number, content: string): Promi
 	}
 }
 
+export type SceneActionType = 'look_character' | 'look_scene' | 'narrate';
+
+export async function triggerSceneAction(characterId: number, actionType: SceneActionType): Promise<boolean> {
+	try {
+		const response = await fetch(`/api/chat/${characterId}/action`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ actionType })
+		});
+		return response.ok;
+	} catch (error) {
+		console.error('Failed to trigger scene action:', error);
+		return false;
+	}
+}
+
 // Utility functions for swipes
 export function getSwipes(message: Message): string[] {
 	if (!message.swipes) return [message.content];

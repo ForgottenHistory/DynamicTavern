@@ -40,12 +40,16 @@
 	});
 
 	let isUser = $derived(message.role === 'user');
+	let isSystem = $derived(message.role === 'system');
 	let showSwipeControls = $derived(message.role === 'assistant' && isLast);
 	let showGeneratingPlaceholder = $derived(generating && isLast && message.role === 'assistant');
 
 	// Display info - prefer stored sender info, fall back to current names
-	let displayName = $derived(message.senderName || (isUser ? (userName || 'User') : (charName || 'Assistant')));
-	let avatar = $derived(message.senderAvatar || (isUser ? userAvatar : charAvatar));
+	let displayName = $derived(
+		message.senderName ||
+		(isSystem ? 'System' : (isUser ? (userName || 'User') : (charName || 'Assistant')))
+	);
+	let avatar = $derived(isSystem ? null : (message.senderAvatar || (isUser ? userAvatar : charAvatar)));
 	let avatarClass = $derived(avatarStyle === 'rounded' ? 'rounded-xl' : 'rounded-full');
 	let avatarSize = $derived(avatarStyle === 'rounded' ? 'w-12 h-16' : 'w-12 h-12');
 
@@ -113,7 +117,14 @@
 <div class="group flex gap-4 px-2 py-1 hover:bg-[var(--bg-secondary)]/50 rounded-lg transition-colors">
 	<!-- Avatar -->
 	<div class="flex-shrink-0">
-		{#if avatar}
+		{#if isSystem}
+			<!-- System icon -->
+			<div class="w-12 h-12 rounded-full bg-[var(--warning)]/20 border border-[var(--warning)]/40 flex items-center justify-center">
+				<svg class="w-6 h-6 text-[var(--warning)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+				</svg>
+			</div>
+		{:else if avatar}
 			<img
 				src={avatar}
 				alt={displayName}
@@ -132,7 +143,7 @@
 	<div class="flex-1 min-w-0">
 		<!-- Header: Name and timestamp -->
 		<div class="flex items-baseline gap-2 mb-1">
-			<span class="font-semibold text-[var(--text-primary)] {isUser ? 'text-[var(--accent-primary)]' : 'text-[var(--accent-secondary)]'}">
+			<span class="font-semibold {isSystem ? 'text-[var(--warning)]' : isUser ? 'text-[var(--accent-primary)]' : 'text-[var(--accent-secondary)]'}">
 				{displayName}
 			</span>
 			<span class="text-xs text-[var(--text-muted)]">

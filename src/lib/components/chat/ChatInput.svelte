@@ -1,4 +1,6 @@
 <script lang="ts">
+	export type SceneActionType = 'look_character' | 'look_scene' | 'narrate';
+
 	interface Props {
 		disabled: boolean;
 		hasAssistantMessages: boolean;
@@ -9,15 +11,31 @@
 		onRegenerate: () => void;
 		onImpersonate: () => void;
 		onGenerateImage: (type: 'character' | 'user' | 'scene' | 'raw') => void;
+		onSceneAction: (type: SceneActionType) => void;
 	}
 
-	let { disabled, hasAssistantMessages, impersonating, generatingImage, onSend, onGenerate, onRegenerate, onImpersonate, onGenerateImage }: Props = $props();
+	let { disabled, hasAssistantMessages, impersonating, generatingImage, onSend, onGenerate, onRegenerate, onImpersonate, onGenerateImage, onSceneAction }: Props = $props();
 
 	let input = $state('');
 	let showImageDropdown = $state(false);
+	let showActionsDropdown = $state(false);
+	let textareaRef: HTMLTextAreaElement;
 
 	export function setInput(text: string) {
 		input = text;
+		// Trigger resize after setting input
+		requestAnimationFrame(() => resizeTextarea());
+	}
+
+	function resizeTextarea() {
+		if (!textareaRef) return;
+		textareaRef.style.height = 'auto';
+		const maxHeight = 200; // Max height in pixels (roughly 8 lines)
+		textareaRef.style.height = Math.min(textareaRef.scrollHeight, maxHeight) + 'px';
+	}
+
+	function handleInput() {
+		resizeTextarea();
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -34,6 +52,10 @@
 		if (message) {
 			onSend(message);
 			input = '';
+			// Reset textarea height
+			if (textareaRef) {
+				textareaRef.style.height = 'auto';
+			}
 		} else {
 			onGenerate();
 		}
@@ -44,10 +66,18 @@
 		onGenerateImage(type);
 	}
 
+	function handleSceneAction(type: SceneActionType) {
+		showActionsDropdown = false;
+		onSceneAction(type);
+	}
+
 	function handleClickOutside(e: MouseEvent) {
 		const target = e.target as HTMLElement;
 		if (!target.closest('.image-dropdown-container')) {
 			showImageDropdown = false;
+		}
+		if (!target.closest('.actions-dropdown-container')) {
+			showActionsDropdown = false;
 		}
 	}
 </script>
@@ -136,14 +166,62 @@
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
 				</svg>
 			</button>
+			<!-- Scene Actions Dropdown -->
+			<div class="relative actions-dropdown-container">
+				<button
+					onclick={() => (showActionsDropdown = !showActionsDropdown)}
+					{disabled}
+					class="p-3 text-[var(--text-muted)] hover:text-[var(--warning)] disabled:opacity-30 disabled:cursor-not-allowed transition rounded-lg hover:bg-[var(--bg-tertiary)]"
+					title="Scene Actions"
+				>
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+					</svg>
+				</button>
+				{#if showActionsDropdown}
+					<div class="absolute bottom-full left-0 mb-2 w-48 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-xl shadow-xl overflow-hidden z-50">
+						<button
+							onclick={() => handleSceneAction('look_character')}
+							class="w-full px-4 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition flex items-center gap-3"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+							</svg>
+							Look at Character
+						</button>
+						<button
+							onclick={() => handleSceneAction('look_scene')}
+							class="w-full px-4 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition flex items-center gap-3"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+							</svg>
+							Look at Scene
+						</button>
+						<button
+							onclick={() => handleSceneAction('narrate')}
+							class="w-full px-4 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition flex items-center gap-3"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+							</svg>
+							Narrate Scene
+						</button>
+					</div>
+				{/if}
+			</div>
 		</div>
 		<textarea
+			bind:this={textareaRef}
 			bind:value={input}
+			oninput={handleInput}
 			onkeydown={handleKeydown}
 			placeholder={impersonating ? "Generating..." : "Type a message..."}
 			disabled={impersonating}
 			rows="1"
-			class="flex-1 px-4 py-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] placeholder-[var(--text-muted)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] resize-none disabled:opacity-50"
+			class="flex-1 px-4 py-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] placeholder-[var(--text-muted)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] resize-none disabled:opacity-50 overflow-hidden"
+			style="scrollbar-width: none; -ms-overflow-style: none;"
 		></textarea>
 		<button
 			onclick={handleSubmit}

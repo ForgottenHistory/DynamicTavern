@@ -9,6 +9,7 @@ AI-powered character chat application enabling users to create and chat with AI 
 ## Rules
 - Don't git commit without permission
 - Don't add features that were not part of original request
+- Don't hardcode in arbitrary limits
 - Styling needs to be consistent. Check other similar components first before implementation.
 
 ## Tech Stack

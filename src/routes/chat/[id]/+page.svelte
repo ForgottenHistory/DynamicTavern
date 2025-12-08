@@ -280,6 +280,20 @@
 		}
 	}
 
+	async function handleSceneAction(actionType: api.SceneActionType) {
+		if (sending || !conversationId) return;
+		sending = true;
+
+		try {
+			const success = await api.triggerSceneAction(data.characterId, actionType);
+			if (!success) {
+				alert('Failed to execute action');
+			}
+		} finally {
+			sending = false;
+		}
+	}
+
 	async function generateImage(type: 'character' | 'user' | 'scene' | 'raw') {
 		if (generatingImage || !conversationId) return;
 
@@ -542,6 +556,7 @@
 				onRegenerate={regenerateLastMessage}
 				onImpersonate={impersonate}
 				onGenerateImage={generateImage}
+				onSceneAction={handleSceneAction}
 			/>
 		{/if}
 	</div>

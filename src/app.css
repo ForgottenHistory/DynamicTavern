@@ -10,8 +10,8 @@
 
 	/* Text colors */
 	--text-primary: #f0f0f0;    /* soft white */
-	--text-secondary: #9ca3af;  /* cool gray */
-	--text-muted: #5b6270;      /* muted blue-gray */
+	--text-secondary: #b0b8c4;  /* lighter cool gray */
+	--text-muted: #7a8494;      /* brighter muted blue-gray */
 
 	/* Border colors */
 	--border-primary: #252530;  /* dark border with cool tint */

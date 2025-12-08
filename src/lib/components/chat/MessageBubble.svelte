@@ -37,11 +37,15 @@
 	});
 
 	let isUser = $derived(message.role === 'user');
+	let isSystem = $derived(message.role === 'system');
 	let showSwipeControls = $derived(message.role === 'assistant' && isLast);
 	let showGeneratingPlaceholder = $derived(generating && isLast && message.role === 'assistant');
 
 	// Display info - prefer stored sender info, fall back to current names
-	let displayName = $derived(message.senderName || (isUser ? (userName || 'User') : (charName || 'Assistant')));
+	let displayName = $derived(
+		message.senderName ||
+		(isSystem ? 'System' : (isUser ? (userName || 'User') : (charName || 'Assistant')))
+	);
 
 	// Format timestamp
 	let timestamp = $derived(() => {
@@ -104,11 +108,16 @@
 	}
 </script>
 
-<div class="group flex {isUser ? 'justify-end' : 'justify-start'}">
-	<div class="flex flex-col gap-1 max-w-[70%]">
+<div class="group flex {isSystem ? 'justify-center' : isUser ? 'justify-end' : 'justify-start'}">
+	<div class="flex flex-col gap-1 {isSystem ? 'max-w-[85%]' : 'max-w-[70%]'}">
 		<!-- Name and timestamp -->
-		<div class="flex items-center gap-2 {isUser ? 'justify-end' : 'justify-start'}">
-			<span class="text-sm font-semibold {isUser ? 'text-[var(--accent-primary)]' : 'text-[var(--accent-secondary)]'}">
+		<div class="flex items-center gap-2 {isSystem ? 'justify-center' : isUser ? 'justify-end' : 'justify-start'}">
+			{#if isSystem}
+				<svg class="w-4 h-4 text-[var(--warning)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+				</svg>
+			{/if}
+			<span class="text-sm font-semibold {isSystem ? 'text-[var(--warning)]' : isUser ? 'text-[var(--accent-primary)]' : 'text-[var(--accent-secondary)]'}">
 				{displayName}
 			</span>
 			<span class="text-xs text-[var(--text-muted)]">
@@ -117,7 +126,9 @@
 		</div>
 
 		<div
-			class="rounded-2xl px-4 py-3 {isUser
+			class="rounded-2xl px-4 py-3 {isSystem
+				? 'bg-[var(--warning)]/10 border-2 border-[var(--warning)]/30 text-[var(--text-primary)] italic'
+				: isUser
 				? 'bg-[var(--assistant-bubble)] border-2 border-[var(--accent-primary)] text-[var(--text-primary)]'
 				: 'bg-[var(--assistant-bubble)] border-2 border-[var(--accent-secondary)]/60 text-[var(--text-primary)]'} {isEditing ? 'ring-2 ring-[var(--accent-primary)]' : ''}"
 		>
