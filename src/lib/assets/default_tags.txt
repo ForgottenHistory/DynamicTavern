@@ -1,0 +1,95 @@
+# danbooru tag library
+# valid tags for ai image generation - organized by category
+
+## people
+1girl, 1boy, 2girls, 2boys
+
+## hair
+aqua hair, black hair, blonde hair, blue hair, brown hair, green hair, grey hair, orange hair, pink hair, purple hair, red hair, white hair, multicolored hair, colored inner hair, colored tips, roots, gradient hair, patterned hair, rainbow hair, split-color hair, spotted hair, streaked hair, striped hair, raccoon tails, two-tone hair
+
+## eyes
+aqua eyes, black eyes, blue eyes, brown eyes, green eyes, grey eyes, orange eyes, purple eyes, pink eyes, red eyes, white eyes, yellow eyes, heterochromia, multicolored eyes, gradient eyes, two-tone eyes, rainbow eyes
+
+## basic positions
+kneeling, on one knee, lying, crossed legs, fetal position, on back, on side, on stomach, sitting, butterfly sitting, figure four sitting, indian style, lotus position, hugging own legs, reclining, seiza, sitting on person, sitting on head, sitting on lap, shoulder carry, human chair, straddling, wariza, yokozuwari, standing, balancing, legs apart, standing on one leg, arm support
+
+## head positions
+head down, head tilt, head back, head rest
+
+## body movement
+balancing, crawling, idle animation, midair, falling, floating, flying, jumping, hopping, pouncing, running, walking, walk cycle, walking on wall
+
+## other positions
+all fours, prostration, bear position, bowlegged pose, squatting, stretching, upside-down, yoga
+
+## torso
+arched back, bent back, bent over, leaning back, leaning forward, slouching, sway back
+
+## leg location
+crossed ankles, folded, leg up, legs up, knees to chest, leg lift, outstretched leg, split, standing split, watson cross, captain morgan pose
+
+## knee location
+knees apart feet together, knees together feet apart, knee up, knees up
+
+## emotions
+angry, annoyed, clenched teeth, scowl, blush, blush stickers, embarrassed, full-face blush, nose blush, bored, closed eyes, confused, crazy, despair, determined, disappointed, disdain, disgust, drunk, envy, excited, exhausted, expressionless, facepalm, flustered, frustrated, furrowed brow, grimace, guilt, happy, lonely, nervous, one eye closed, round mouth, open mouth, parted lips, pain, pout, raised eyebrow, raised inner eyebrows, rolling eyes, sad, depressed, frown, gloom, tears, scared, panicking, worried, serious, sigh, sleepy, sulking, surprised, thinking, pensive, v-shaped eyebrows, wince
+
+## smile
+:d, crazy smile, evil smile, fingersmile, forced smile, grin, evil grin, light smile, sad smile, smile, stifled laugh
+
+## emotes
+;), :d, ;d, xd, d:, :3, ;3, x3, 3:, 0w0, uwu, :p, ;p, :q, ;q, >:), >:(, :t, :i, :/, :|, x mouth, :c, c:, :<, ;<, diamond mouth, :>, :>=, :o, ;o, o3o, >3<, o_o, 0_0, |_|, ._., solid circle eyes, heart-shaped eyes, ^_^, \(^o^)/, ^q^, >_<, xd [ xd ], >o<, @_@, >_@, +_+, +_-, =_=, t_t [ t_t ], <o>_<o>, <|>_<|>
+
+## locations & settings
+indoors, outdoors, bedroom, bathroom, kitchen, living room, dining room, hallway, stairs, balcony, window, door, doorway, bed, desk, chair, couch, sofa, table, floor, carpet, rug, classroom, school, library, cafe, restaurant, bar, office, gym, locker room, pool, poolside, beach, ocean, sea, water, sand, shore, park, garden, forest, woods, trees, grass, flowers, field, meadow, city, street, sidewalk, alley, building, skyscraper, rooftop, night sky, starry sky, cloudy sky, sunset, sunrise, moon, stars, mountain, hill, river, lake, bridge, train station, platform, train interior, bus interior, car interior, convenience store, shopping mall, arcade
+
+## clothing - tops
+shirt, t-shirt, tank top, camisole, blouse, dress shirt, polo shirt, sweater, cardigan, hoodie, jacket, blazer, coat, vest, crop top, off-shoulder, sleeveless, short sleeves, long sleeves, rolled up sleeves, open jacket, open shirt, unbuttoned, partially unbuttoned, collared shirt, turtleneck, v-neck, scoop neck
+
+## clothing - bottoms
+skirt, miniskirt, pleated skirt, long skirt, shorts, short shorts, pants, jeans, leggings, tights, stockings, thigh highs, knee highs, ankle socks, pantyhose
+
+## clothing - dresses & outfits
+dress, sundress, summer dress, evening gown, cocktail dress, mini dress, long dress, one-piece, school uniform, sailor uniform, gym uniform, swimsuit, bikini, one-piece swimsuit, pajamas, nightgown, bathrobe, apron, maid outfit, nurse outfit, sports uniform, athletic wear, tracksuit, jersey, casual clothes, formal wear, business suit
+
+## clothing - prints
+animal print
+
+## clothing - uniforms
+military uniform, military fatigues, luftwaffe, military hat, military jacket, pilot uniform, sailor, chef, fast food uniform, waitress, band uniform, gakuran, gym uniform, kindergarten uniform, meiji schoolgirl uniform, school hat, school swimsuit, serafuku, baseball uniform, basketball uniform, american football uniform, soccer uniform, tennis uniform, track uniform, volleyball uniform, employee uniform, maid, miko, nurse, police uniform, scout uniform
+
+## clothing - swimsuits
+bikini, bikini skirt, rash guard, old-fashioned swimsuit, one-piece swimsuit, casual one-piece swimsuit, dress swimsuit, competition swimsuit, monokini, frilled one-piece swimsuit, frilled bikini, polka dot swimsuit, polka dot bikini, striped one-piece swimsuit, striped bikini
+
+## clothing - swimsuits - other
+adjusting swimsuit, swim cap, swimsuit under clothes, swimsuit cover-up, sarong
+
+## accessories
+ribbon, bow, hair ribbon, hair bow, hairband, headband, hair ornament, hair flower, scrunchie, hair clip, barrette, hat, cap, beanie, sun hat, glasses, sunglasses, earrings, necklace, choker, bracelet, watch, ring, bag, purse, backpack, shoulder bag, scarf, tie, bowtie, belt, gloves, fingerless gloves
+
+## lighting & atmosphere
+sunlight, natural light, bright, soft lighting, warm lighting, cool lighting, dim lighting, dark, shadows, dramatic lighting, spotlight, backlight, backlighting, rim lighting, side lighting, lens flare, light rays, god rays, dappled sunlight, golden hour, blue hour, twilight, night, moonlight, starlight, indoor lighting, fluorescent light, neon lights, candlelight, firelight, ambient light, glow, glowing, bloom, depth of field, blurry background, sharp focus
+
+## gazes
+looking afar, looking back at viewer, looking around, looking at another, looking at hand, looking at hands, looking at mirror, looking at phone, looking at self, looking at viewer, looking afar, looking back, looking down, looking outside, looking over eyewear, looking to the side, looking up
+
+## camera & composition
+looking at viewer, pov, facing viewer, profile, dutch angle, close-up, wide shot, first-person view, symmetry, centered, rule of thirds, dynamic angle, low angle, high angle, looking up at viewer, looking down at viewer
+
+## emotions & mood
+happy, cheerful, energetic, calm, peaceful, serene, relaxed, comfortable, cozy, gentle, soft, romantic, elegant, graceful, cute, adorable, innocent, pure, melancholy, lazy, proud, mischievous, thoughtful, contemplative
+
+## activities
+reading, studying, writing, drawing, painting, cooking, eating, drinking, sleeping, waking up, bathing, showering, dressing, exercising, yoga, jogging, singing, listening to music, playing instrument, gaming, using phone, texting, taking photo, selfie, working, typing, browsing, relaxing, resting, lounging, meditating
+
+## weather & nature
+sunny, cloudy, overcast, rain, raining, rainy day, storm, thunder, lightning, snow, snowing, snowy, wind, windy, fog, mist, rainbow, cherry blossoms, sakura, falling petals, autumn leaves, falling leaves, rose, tulip, sunflower, lily, hydrangea, butterfly, bird, cat, dog
+
+## time of day
+morning, afternoon, evening, midnight, dawn, dusk, daytime, nighttime
+
+## focus
+back focus, eye focus, hand focus, full body, upper body, lower body, head out of frame, feet out of frame, out of frame, split crop, portrait, cowboy shot, from behind, from side, from above, from below
+
+## touching clothes
+adjusting clothes, clothes grab, apron grab, collar grab, necktie grab, skirt grab, collar tug, dress tug, shirt tug, skirt tug, wringing clothes
