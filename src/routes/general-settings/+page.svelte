@@ -9,6 +9,7 @@
 	let chatLayout = $state<'bubbles' | 'discord'>('bubbles');
 	let avatarStyle = $state<'circle' | 'rounded'>('circle');
 	let textCleanupEnabled = $state(true);
+	let autoWrapActions = $state(false);
 	let loading = $state(true);
 
 	// Load settings on mount
@@ -24,6 +25,7 @@
 				chatLayout = data.chatLayout || 'bubbles';
 				avatarStyle = data.avatarStyle || 'circle';
 				textCleanupEnabled = data.textCleanupEnabled ?? true;
+				autoWrapActions = data.autoWrapActions ?? false;
 			}
 		} catch (err) {
 			console.error('Failed to load settings:', err);
@@ -40,13 +42,13 @@
 			const res = await fetch('/api/settings', {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ chatLayout, avatarStyle, textCleanupEnabled })
+				body: JSON.stringify({ chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions })
 			});
 
 			if (res.ok) {
 				message = { type: 'success', text: 'Settings saved successfully!' };
 				// Dispatch event so chat components can react
-				window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { chatLayout, avatarStyle, textCleanupEnabled } }));
+				window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions } }));
 			} else {
 				const data = await res.json();
 				message = { type: 'error', text: data.error || 'Failed to save settings' };
@@ -264,25 +266,50 @@
 								Configure how message text is processed and displayed
 							</p>
 
-							<label class="flex items-center justify-between p-4 rounded-xl border border-[var(--border-primary)] hover:border-[var(--border-secondary)] transition cursor-pointer">
-								<div>
-									<p class="font-medium text-[var(--text-primary)]">Text Cleanup</p>
-									<p class="text-sm text-[var(--text-muted)] mt-1">
-										Normalize quotes and balance asterisks for consistent RP formatting
-									</p>
-								</div>
-								<button
-									type="button"
-									role="switch"
-									aria-checked={textCleanupEnabled}
-									onclick={() => textCleanupEnabled = !textCleanupEnabled}
-									class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {textCleanupEnabled ? 'bg-[var(--accent-primary)]' : 'bg-[var(--bg-tertiary)]'}"
-								>
-									<span
-										class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {textCleanupEnabled ? 'translate-x-6' : 'translate-x-1'}"
-									></span>
-								</button>
-							</label>
+							<div class="space-y-3">
+								<label class="flex items-center justify-between p-4 rounded-xl border border-[var(--border-primary)] hover:border-[var(--border-secondary)] transition cursor-pointer">
+									<div>
+										<p class="font-medium text-[var(--text-primary)]">Text Cleanup</p>
+										<p class="text-sm text-[var(--text-muted)] mt-1">
+											Normalize quotes and balance asterisks for consistent RP formatting
+										</p>
+									</div>
+									<button
+										type="button"
+										role="switch"
+										aria-checked={textCleanupEnabled}
+										onclick={() => textCleanupEnabled = !textCleanupEnabled}
+										class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {textCleanupEnabled ? 'bg-[var(--accent-primary)]' : 'bg-[var(--bg-tertiary)]'}"
+									>
+										<span
+											class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {textCleanupEnabled ? 'translate-x-6' : 'translate-x-1'}"
+										></span>
+									</button>
+								</label>
+
+								<!-- Nested option: Auto-wrap actions (only visible when text cleanup is enabled) -->
+								{#if textCleanupEnabled}
+									<label class="flex items-center justify-between p-4 ml-6 rounded-xl border border-[var(--border-primary)] hover:border-[var(--border-secondary)] transition cursor-pointer bg-[var(--bg-primary)]/50">
+										<div>
+											<p class="font-medium text-[var(--text-primary)]">Auto-wrap Plain Text</p>
+											<p class="text-sm text-[var(--text-muted)] mt-1">
+												Wrap text that isn't in quotes or asterisks with *asterisks*
+											</p>
+										</div>
+										<button
+											type="button"
+											role="switch"
+											aria-checked={autoWrapActions}
+											onclick={() => autoWrapActions = !autoWrapActions}
+											class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {autoWrapActions ? 'bg-[var(--accent-primary)]' : 'bg-[var(--bg-tertiary)]'}"
+										>
+											<span
+												class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {autoWrapActions ? 'translate-x-6' : 'translate-x-1'}"
+											></span>
+										</button>
+									</label>
+								{/if}
+							</div>
 						</div>
 
 						<!-- Save Button -->

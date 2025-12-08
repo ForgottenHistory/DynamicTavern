@@ -20,6 +20,10 @@
 	const data = $derived(cardData.data || {});
 	const baseTags = $derived(character?.tags ? JSON.parse(character.tags) : []);
 
+	// Parse original card data for reset functionality
+	const originalCardData = $derived(character?.originalCardData ? JSON.parse(character.originalCardData) : null);
+	const originalData = $derived(originalCardData?.data || null);
+
 	// Local display state (updates immediately on save)
 	let displayName = $state<string | null>(null);
 	let displayTags = $state<string[] | null>(null);
@@ -270,9 +274,9 @@
 				<!-- Scrollable Tab Content -->
 				<div class="flex-1 overflow-y-auto p-6">
 					{#if activeTab === 'overview'}
-						<OverviewTab {character} data={currentData} onSave={handleOverviewFieldSave} />
+						<OverviewTab {character} data={currentData} {originalData} onSave={handleOverviewFieldSave} />
 					{:else if activeTab === 'messages'}
-						<MessagesTab data={currentData} onSave={handleMessagesFieldSave} />
+						<MessagesTab data={currentData} {originalData} onSave={handleMessagesFieldSave} />
 					{:else if activeTab === 'image'}
 						<ImageTab
 							{character}

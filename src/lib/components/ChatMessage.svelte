@@ -7,9 +7,10 @@
 		charName?: string;
 		userName?: string;
 		textCleanupEnabled?: boolean;
+		autoWrapActions?: boolean;
 	}
 
-	let { content, role, charName = 'Character', userName = 'User', textCleanupEnabled = true }: Props = $props();
+	let { content, role, charName = 'Character', userName = 'User', textCleanupEnabled = true, autoWrapActions = false }: Props = $props();
 
 	// Check if this is an SD image message (reactive to content changes)
 	let sdImageMatch = $derived(content.match(/^\[SD_IMAGE\](.+?)\|(.+?)\[\/SD_IMAGE\]$/s));
@@ -61,6 +62,99 @@
 		return line;
 	}
 
+	// Auto-wrap plain text with asterisks
+	// Plain text = text not inside quotes or asterisks
+	function autoWrapPlainText(text: string): string {
+		const lines = text.split('\n');
+		return lines.map(line => {
+			// Skip empty lines
+			if (!line.trim()) return line;
+
+			let result = '';
+			let i = 0;
+			let plainTextStart = -1;
+
+			while (i < line.length) {
+				const char = line[i];
+
+				// Check for quote start
+				if (char === '"') {
+					// Flush any accumulated plain text
+					if (plainTextStart !== -1) {
+						const plainText = line.slice(plainTextStart, i).trim();
+						if (plainText) {
+							result += `*${plainText}* `;
+						}
+						plainTextStart = -1;
+					}
+					// Find matching quote
+					const endQuote = line.indexOf('"', i + 1);
+					if (endQuote !== -1) {
+						result += line.slice(i, endQuote + 1);
+						i = endQuote + 1;
+					} else {
+						result += line.slice(i);
+						break;
+					}
+					continue;
+				}
+
+				// Check for asterisk start
+				if (char === '*') {
+					// Flush any accumulated plain text
+					if (plainTextStart !== -1) {
+						const plainText = line.slice(plainTextStart, i).trim();
+						if (plainText) {
+							result += `*${plainText}* `;
+						}
+						plainTextStart = -1;
+					}
+					// Find matching asterisk(s)
+					// Check for double asterisk
+					if (line[i + 1] === '*') {
+						const endDouble = line.indexOf('**', i + 2);
+						if (endDouble !== -1) {
+							result += line.slice(i, endDouble + 2);
+							i = endDouble + 2;
+						} else {
+							result += line.slice(i);
+							break;
+						}
+					} else {
+						const endSingle = line.indexOf('*', i + 1);
+						if (endSingle !== -1) {
+							result += line.slice(i, endSingle + 1);
+							i = endSingle + 1;
+						} else {
+							result += line.slice(i);
+							break;
+						}
+					}
+					continue;
+				}
+
+				// Start tracking plain text if not already
+				if (plainTextStart === -1 && char !== ' ') {
+					plainTextStart = i;
+				} else if (plainTextStart === -1 && char === ' ') {
+					result += char;
+				}
+
+				i++;
+			}
+
+			// Flush remaining plain text
+			if (plainTextStart !== -1) {
+				const plainText = line.slice(plainTextStart).trim();
+				if (plainText) {
+					result += `*${plainText}*`;
+				}
+			}
+
+			return result;
+		}).join('\n');
+	}
+
 	// Custom renderer for RP-style formatting
 	function renderMessage(text: string): string {
 		// Replace template variables (case-insensitive)
@@ -77,6 +171,11 @@
 
 			// Normalize asterisks per line
 			processed = processed.split('\n').map(normalizeAsterisks).join('\n');
+
+			// Auto-wrap plain text with asterisks if enabled
+			if (autoWrapActions) {
+				processed = autoWrapPlainText(processed);
+			}
 		}
 
 		// Step 1: Handle double-asterisk dialogue (e.g., **"text"** or **text**)

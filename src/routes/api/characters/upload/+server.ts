@@ -78,7 +78,8 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 					// Fall back to full image if thumbnail generation fails
 				}
 
-				// Store in database
+				// Store in database (save original card data for reset functionality)
+				const cardDataJson = JSON.stringify(cardData);
 				const newChar = await db
 					.insert(characters)
 					.values({
@@ -88,7 +89,8 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 						tags: JSON.stringify(tags),
 						imageData,
 						thumbnailData,
-						cardData: JSON.stringify(cardData)
+						cardData: cardDataJson,
+						originalCardData: cardDataJson // Store original for reset functionality
 					})
 					.returning();
 

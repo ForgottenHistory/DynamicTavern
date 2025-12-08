@@ -12,6 +12,7 @@ export const users = sqliteTable('users', {
 	chatLayout: text('chat_layout').notNull().default('bubbles'), // 'bubbles' (chat app style) or 'discord' (full-width rows)
 	avatarStyle: text('avatar_style').notNull().default('circle'), // 'circle' or 'rounded' (rounded square)
 	textCleanupEnabled: integer('text_cleanup_enabled', { mode: 'boolean' }).notNull().default(true), // Enable asterisk normalization and quote cleanup
+	autoWrapActions: integer('auto_wrap_actions', { mode: 'boolean' }).notNull().default(false), // Auto-wrap plain text with asterisks (requires textCleanupEnabled)
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.$defaultFn(() => new Date())
@@ -167,7 +168,8 @@ export const characters = sqliteTable('characters', {
 	tags: text('tags'), // JSON array of tags
 	imageData: text('image_data'), // Base64 image data (full size)
 	thumbnailData: text('thumbnail_data'), // Base64 thumbnail for sidebar
-	cardData: text('card_data').notNull(), // Full character card JSON
+	cardData: text('card_data').notNull(), // Full character card JSON (can be edited)
+	originalCardData: text('original_card_data'), // Original imported card JSON (never modified after import)
 	// Image generation settings (per-character)
 	imageTags: text('image_tags'), // Always included tags (hair color, eye color, body type)
 	contextualTags: text('contextual_tags'), // AI chooses from these based on context

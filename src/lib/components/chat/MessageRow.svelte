@@ -14,6 +14,7 @@
 		userAvatar: string | null | undefined;
 		avatarStyle?: 'circle' | 'rounded';
 		textCleanupEnabled?: boolean;
+		autoWrapActions?: boolean;
 		generating: boolean;
 		onSwipe: (direction: 'left' | 'right') => void;
 		onSaveEdit: (content: string) => void;
@@ -21,7 +22,7 @@
 		onBranch?: () => void;
 	}
 
-	let { message, index, isLast, charName, userName, charAvatar, userAvatar, avatarStyle = 'circle', textCleanupEnabled = true, generating, onSwipe, onSaveEdit, onDelete, onBranch }: Props = $props();
+	let { message, index, isLast, charName, userName, charAvatar, userAvatar, avatarStyle = 'circle', textCleanupEnabled = true, autoWrapActions = false, generating, onSwipe, onSaveEdit, onDelete, onBranch }: Props = $props();
 
 	// Reasoning modal state
 	let showReasoningModal = $state(false);
@@ -210,6 +211,7 @@
 					{charName}
 					{userName}
 					{textCleanupEnabled}
+					{autoWrapActions}
 				/>
 			</div>
 		{/if}

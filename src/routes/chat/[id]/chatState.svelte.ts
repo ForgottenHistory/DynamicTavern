@@ -47,6 +47,7 @@ export function createChatState(options: ChatStateOptions) {
 	let chatLayout = $state<'bubbles' | 'discord'>('bubbles');
 	let avatarStyle = $state<'circle' | 'rounded'>('circle');
 	let textCleanupEnabled = $state(true);
+	let autoWrapActions = $state(false);
 	let userAvatar = $state<string | null>(null);
 	let userName = $state<string | null>(null);
 
@@ -84,14 +85,16 @@ export function createChatState(options: ChatStateOptions) {
 		chatLayout = settings.chatLayout;
 		avatarStyle = settings.avatarStyle;
 		textCleanupEnabled = settings.textCleanupEnabled;
+		autoWrapActions = settings.autoWrapActions;
 		userAvatar = settings.userAvatar;
 		userName = settings.userName;
 	}
 
-	function handleSettingsUpdate(e: CustomEvent<{ chatLayout: 'bubbles' | 'discord'; avatarStyle: 'circle' | 'rounded'; textCleanupEnabled: boolean }>) {
+	function handleSettingsUpdate(e: CustomEvent<{ chatLayout: 'bubbles' | 'discord'; avatarStyle: 'circle' | 'rounded'; textCleanupEnabled: boolean; autoWrapActions: boolean }>) {
 		chatLayout = e.detail.chatLayout;
 		if (e.detail.avatarStyle) avatarStyle = e.detail.avatarStyle;
 		if (typeof e.detail.textCleanupEnabled === 'boolean') textCleanupEnabled = e.detail.textCleanupEnabled;
+		if (typeof e.detail.autoWrapActions === 'boolean') autoWrapActions = e.detail.autoWrapActions;
 	}
 
 	// Character and conversation loading
@@ -498,6 +501,7 @@ export function createChatState(options: ChatStateOptions) {
 		get chatLayout() { return chatLayout; },
 		get avatarStyle() { return avatarStyle; },
 		get textCleanupEnabled() { return textCleanupEnabled; },
+		get autoWrapActions() { return autoWrapActions; },
 		get userAvatar() { return userAvatar; },
 		get userName() { return userName; },
 		get showCharacterImage() { return showCharacterImage; },

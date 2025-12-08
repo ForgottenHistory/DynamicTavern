@@ -92,6 +92,7 @@
 					chatLayout={state.chatLayout}
 					avatarStyle={state.avatarStyle}
 					textCleanupEnabled={state.textCleanupEnabled}
+					autoWrapActions={state.autoWrapActions}
 					onSwipe={state.swipeMessage}
 					onSaveEdit={state.saveMessageEdit}
 					onDelete={state.deleteMessageAndBelow}

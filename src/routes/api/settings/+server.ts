@@ -26,6 +26,7 @@ export const GET: RequestHandler = async ({ cookies }) => {
 		chatLayout: user.chatLayout || 'bubbles',
 		avatarStyle: user.avatarStyle || 'circle',
 		textCleanupEnabled: user.textCleanupEnabled ?? true,
+		autoWrapActions: user.autoWrapActions ?? false,
 		userAvatar: activeUserInfo.avatarData || null,
 		userName: activeUserInfo.name
 	});
@@ -38,7 +39,7 @@ export const PUT: RequestHandler = async ({ cookies, request }) => {
 	}
 
 	const body = await request.json();
-	const { chatLayout, avatarStyle, textCleanupEnabled } = body;
+	const { chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions } = body;
 
 	// Validate chatLayout
 	if (chatLayout && !['bubbles', 'discord'].includes(chatLayout)) {
@@ -50,12 +51,13 @@ export const PUT: RequestHandler = async ({ cookies, request }) => {
 		return json({ error: 'Invalid avatar style value' }, { status: 400 });
 	}
 
-	const updateData: { chatLayout?: string; avatarStyle?: string; textCleanupEnabled?: boolean } = {};
+	const updateData: { chatLayout?: string; avatarStyle?: string; textCleanupEnabled?: boolean; autoWrapActions?: boolean } = {};
 	if (chatLayout) updateData.chatLayout = chatLayout;
 	if (avatarStyle) updateData.avatarStyle = avatarStyle;
 	if (typeof textCleanupEnabled === 'boolean') updateData.textCleanupEnabled = textCleanupEnabled;
+	if (typeof autoWrapActions === 'boolean') updateData.autoWrapActions = autoWrapActions;
 
 	await db.update(users).set(updateData).where(eq(users.id, parseInt(userId)));
 
-	return json({ success: true, chatLayout, avatarStyle, textCleanupEnabled });
+	return json({ success: true, chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions });
 };
