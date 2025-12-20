@@ -51,6 +51,12 @@ function getProviderConfig(provider: string): ProviderConfig {
 				baseUrl: 'https://api.featherless.ai/v1',
 				name: 'Featherless'
 			};
+		case 'nanogpt':
+			return {
+				apiKey: env.NANOGPT_API_KEY,
+				baseUrl: 'https://nano-gpt.com/api/v1',
+				name: 'NanoGPT'
+			};
 		case 'openrouter':
 		default:
 			return {
@@ -103,10 +109,14 @@ export async function callLlm({
 		messages,
 		temperature: settings.temperature,
 		max_tokens: settings.maxTokens,
-		top_p: settings.topP,
-		frequency_penalty: settings.frequencyPenalty,
-		presence_penalty: settings.presencePenalty
+		top_p: settings.topP
 	};
+
+	// Add OpenAI-style penalties (not supported by Featherless vLLM backend)
+	if (provider !== 'featherless') {
+		requestBody.frequency_penalty = settings.frequencyPenalty;
+		requestBody.presence_penalty = settings.presencePenalty;
+	}
 
 	// Add reasoning parameter if enabled (OpenRouter only)
 	if (settings.reasoningEnabled && provider === 'openrouter') {
@@ -115,8 +125,8 @@ export async function callLlm({
 		};
 	}
 
-	// Add Featherless-specific parameters
-	if (provider === 'featherless') {
+	// Add extended sampling parameters (Featherless and NanoGPT)
+	if (provider === 'featherless' || provider === 'nanogpt') {
 		requestBody.repetition_penalty = settings.repetitionPenalty ?? 1.0;
 		requestBody.top_k = settings.topK ?? -1;
 		requestBody.min_p = settings.minP ?? 0.0;

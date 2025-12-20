@@ -121,6 +121,7 @@ interface ChatCompletionResult {
  * @param settings - User's LLM settings
  * @param messageType - Type of message for logging ('chat', 'regenerate', 'swipe')
  * @param conversationId - Optional conversation ID for world info lookup
+ * @param scenarioOverride - Optional scenario override from conversation (takes precedence over character card)
  * @returns Generated assistant message content and reasoning
  */
 export async function generateChatCompletion(
@@ -128,7 +129,8 @@ export async function generateChatCompletion(
 	character: Character,
 	settings: LlmSettings,
 	messageType: string = 'chat',
-	conversationId?: number
+	conversationId?: number,
+	scenarioOverride?: string | null
 ): Promise<ChatCompletionResult> {
 	// Parse character card data
 	let characterData: any = {};
@@ -170,11 +172,12 @@ export async function generateChatCompletion(
 
 	// Prepare template variables
 	// Use character.description (top-level) if available, otherwise fall back to cardData.description
+	// Use scenarioOverride if provided, otherwise fall back to character card scenario
 	const templateVariables = {
 		char: character.name || 'Character',
 		user: userName,
 		personality: characterData.personality || '',
-		scenario: characterData.scenario || '',
+		scenario: scenarioOverride || characterData.scenario || '',
 		description: character.description || characterData.description || '',
 		world: worldText,
 		post_history: character.postHistory || '',
@@ -264,6 +267,7 @@ export async function generateChatCompletion(
  * @param style - Impersonation style (serious, sarcastic, flirty, or impersonate)
  * @param userId - User ID for persona/lorebook lookup
  * @param conversationId - Optional conversation ID for world info lookup
+ * @param scenarioOverride - Optional scenario override from conversation (takes precedence over character card)
  * @returns Generated user message content
  */
 export async function generateImpersonation(
@@ -272,7 +276,8 @@ export async function generateImpersonation(
 	settings: LlmSettingsLike,
 	style: ImpersonateStyle = 'impersonate',
 	userId?: number,
-	conversationId?: number
+	conversationId?: number,
+	scenarioOverride?: string | null
 ): Promise<string> {
 	// Parse character card data
 	let characterData: any = {};
@@ -315,11 +320,12 @@ export async function generateImpersonation(
 
 	// Prepare template variables
 	// Use character.description (top-level) if available, otherwise fall back to cardData.description
+	// Use scenarioOverride if provided, otherwise fall back to character card scenario
 	const templateVariables = {
 		char: character.name || 'Character',
 		user: userName,
 		personality: characterData.personality || '',
-		scenario: characterData.scenario || '',
+		scenario: scenarioOverride || characterData.scenario || '',
 		description: character.description || characterData.description || '',
 		world: worldText,
 		post_history: character.postHistory || '',
@@ -420,6 +426,7 @@ async function loadNarrationPromptFromFile(type: NarrationType): Promise<string>
  * @param narrateType - Type of narration to generate
  * @param conversationId - Optional conversation ID for world info lookup
  * @param itemContext - Optional item context for look_item action
+ * @param scenarioOverride - Optional scenario override from conversation (takes precedence over character card)
  * @returns Generated narration content and reasoning
  */
 export async function generateNarration(
@@ -428,7 +435,8 @@ export async function generateNarration(
 	settings: LlmSettings,
 	narrateType: NarrationType,
 	conversationId?: number,
-	itemContext?: ItemContext
+	itemContext?: ItemContext,
+	scenarioOverride?: string | null
 ): Promise<ChatCompletionResult> {
 	// Parse character card data
 	let characterData: any = {};
@@ -469,11 +477,12 @@ export async function generateNarration(
 
 	// Prepare template variables
 	// Use character.description (top-level) if available, otherwise fall back to cardData.description
+	// Use scenarioOverride if provided, otherwise fall back to character card scenario
 	const templateVariables = {
 		char: character.name || 'Character',
 		user: userName,
 		personality: characterData.personality || '',
-		scenario: characterData.scenario || '',
+		scenario: scenarioOverride || characterData.scenario || '',
 		description: character.description || characterData.description || '',
 		world: worldText,
 		post_history: character.postHistory || '',

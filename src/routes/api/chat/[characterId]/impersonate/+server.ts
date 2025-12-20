@@ -67,7 +67,9 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 			character,
 			settings,
 			style,
-			parseInt(userId)
+			parseInt(userId),
+			conversation.id,
+			conversation.scenario // pass scenario override from conversation
 		);
 
 		// Return the generated text for the user to review

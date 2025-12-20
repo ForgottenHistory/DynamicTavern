@@ -48,6 +48,7 @@
 		>
 			<option value="openrouter">OpenRouter</option>
 			<option value="featherless">Featherless</option>
+			<option value="nanogpt">NanoGPT</option>
 		</select>
 	</div>
 
@@ -128,10 +129,10 @@
 		</div>
 	{/if}
 
-	<!-- Featherless-specific Settings -->
-	{#if settings.provider === 'featherless'}
+	<!-- Extended Sampling Parameters (Featherless and NanoGPT) -->
+	{#if settings.provider === 'featherless' || settings.provider === 'nanogpt'}
 		<div class="border border-[var(--border-primary)] rounded-xl p-4 space-y-4">
-			<h3 class="font-medium text-[var(--text-primary)]">Featherless Parameters</h3>
+			<h3 class="font-medium text-[var(--text-primary)]">Extended Sampling Parameters</h3>
 
 			<!-- Top K -->
 			<div>

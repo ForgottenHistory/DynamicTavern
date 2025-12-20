@@ -48,17 +48,8 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 				)
 			);
 
-		// Create new conversation
-		const [conversation] = await db
-			.insert(conversations)
-			.values({
-				userId: parseInt(userId),
-				characterId,
-				isActive: true
-			})
-			.returning();
-
 		let greetingContent: string | null = null;
+		let scenarioContent: string | null = null;
 
 		if (useStandardGreeting) {
 			// Use standard first_mes from character card
@@ -74,7 +65,7 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 			const userInfo = await personaService.getActiveUserInfo(parseInt(userId));
 
 			// Apply variables to scenario content
-			const scenarioContent = scenarioService.applyVariables(scenario.content, {
+			scenarioContent = scenarioService.applyVariables(scenario.content, {
 				char: character.name,
 				user: userInfo.name
 			});
@@ -88,6 +79,17 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 				userName: userInfo.name
 			});
 		}
+
+		// Create new conversation (with scenario if custom)
+		const [conversation] = await db
+			.insert(conversations)
+			.values({
+				userId: parseInt(userId),
+				characterId,
+				isActive: true,
+				scenario: scenarioContent
+			})
+			.returning();
 
 		// Insert greeting message if we have one
 		if (greetingContent && greetingContent.trim()) {

@@ -94,7 +94,8 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 				settings,
 				narrateType,
 				conversation.id,
-				itemContext
+				itemContext,
+				conversation.scenario // pass scenario override from conversation
 			);
 		} catch (genError) {
 			emitTyping(conversation.id, false);

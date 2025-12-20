@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { llmSettingsService } from './llmSettingsService';
 import { queueService } from './queueService';
-import { OPENROUTER_API_KEY, FEATHERLESS_API_KEY } from '$env/static/private';
+import { OPENROUTER_API_KEY, FEATHERLESS_API_KEY, NANOGPT_API_KEY } from '$env/static/private';
 
 interface Message {
 	role: 'system' | 'user' | 'assistant';
@@ -39,20 +39,27 @@ interface ProviderConfig {
 class LlmService {
 	private openrouterApiKey: string;
 	private featherlessApiKey: string;
+	private nanogptApiKey: string;
 	private openrouterBaseUrl: string;
 	private featherlessBaseUrl: string;
+	private nanogptBaseUrl: string;
 
 	constructor() {
 		this.openrouterApiKey = OPENROUTER_API_KEY || '';
 		this.featherlessApiKey = FEATHERLESS_API_KEY || '';
+		this.nanogptApiKey = NANOGPT_API_KEY || '';
 		this.openrouterBaseUrl = 'https://openrouter.ai/api/v1';
 		this.featherlessBaseUrl = 'https://api.featherless.ai/v1';
+		this.nanogptBaseUrl = 'https://nano-gpt.com/api/v1';
 
 		if (!this.openrouterApiKey) {
 			console.warn('⚠️  OPENROUTER_API_KEY not found in environment variables');
 		}
 		if (!this.featherlessApiKey) {
 			console.warn('⚠️  FEATHERLESS_API_KEY not found in environment variables');
+		}
+		if (!this.nanogptApiKey) {
+			console.warn('⚠️  NANOGPT_API_KEY not found in environment variables');
 		}
 	}
 
@@ -68,6 +75,12 @@ class LlmService {
 					apiKey: this.featherlessApiKey,
 					baseUrl: this.featherlessBaseUrl,
 					name: 'Featherless'
+				};
+			case 'nanogpt':
+				return {
+					apiKey: this.nanogptApiKey,
+					baseUrl: this.nanogptBaseUrl,
+					name: 'NanoGPT'
 				};
 			case 'openrouter':
 			default:
@@ -131,10 +144,14 @@ class LlmService {
 			messages,
 			temperature: selectedTemperature,
 			max_tokens: selectedMaxTokens,
-			top_p: userSettings.topP,
-			frequency_penalty: userSettings.frequencyPenalty,
-			presence_penalty: userSettings.presencePenalty
+			top_p: userSettings.topP
 		};
+
+		// Add OpenAI-style penalties (not supported by Featherless vLLM backend)
+		if (provider !== 'featherless') {
+			requestBody.frequency_penalty = userSettings.frequencyPenalty;
+			requestBody.presence_penalty = userSettings.presencePenalty;
+		}
 
 		// Add reasoning parameter if enabled (OpenRouter only)
 		if (userSettings.reasoningEnabled && provider === 'openrouter') {
@@ -143,8 +160,8 @@ class LlmService {
 			};
 		}
 
-		// Add Featherless-specific parameters
-		if (provider === 'featherless') {
+		// Add extended sampling parameters (Featherless and NanoGPT)
+		if (provider === 'featherless' || provider === 'nanogpt') {
 			requestBody.repetition_penalty = userSettings.repetitionPenalty ?? 1.0;
 			requestBody.top_k = userSettings.topK ?? -1;
 			requestBody.min_p = userSettings.minP ?? 0.0;

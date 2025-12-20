@@ -148,7 +148,8 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 					character,
 					settings,
 					'swipe', // message type for logging
-					conversation.id
+					conversation.id,
+					conversation.scenario // pass scenario override from conversation
 				);
 				newContent = result.content;
 				newReasoning = result.reasoning;

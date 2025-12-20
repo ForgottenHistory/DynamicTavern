@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import axios from 'axios';
-import { OPENROUTER_API_KEY, FEATHERLESS_API_KEY } from '$env/static/private';
+import { OPENROUTER_API_KEY, FEATHERLESS_API_KEY, NANOGPT_API_KEY } from '$env/static/private';
 
 export const GET: RequestHandler = async ({ url }) => {
 	const provider = url.searchParams.get('provider') || 'openrouter';
@@ -32,6 +32,24 @@ export const GET: RequestHandler = async ({ url }) => {
 					contextLength: model.context_length || 4096,
 					pricing: null
 				}));
+
+			return json({ models });
+		} else if (provider === 'nanogpt') {
+			// Fetch models from NanoGPT
+			const response = await axios.get('https://nano-gpt.com/api/v1/models', {
+				headers: {
+					Authorization: `Bearer ${NANOGPT_API_KEY}`
+				}
+			});
+
+			// Transform to simpler format
+			const models = response.data.data.map((model: any) => ({
+				id: model.id,
+				name: model.name || model.id,
+				description: model.id,
+				contextLength: model.context_length || 4096,
+				pricing: null
+			}));
 
 			return json({ models });
 		} else {

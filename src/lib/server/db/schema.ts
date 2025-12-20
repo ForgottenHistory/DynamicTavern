@@ -258,6 +258,7 @@ export const conversations = sqliteTable('conversations', {
 	branchPointMessageId: integer('branch_point_message_id'), // Message ID where branch was created
 	isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true), // Currently active branch for this character
 	worldInfo: text('world_info'), // JSON string storing world state (clothes, etc.)
+	scenario: text('scenario'), // Custom scenario override (if different from character card)
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.$defaultFn(() => new Date())
