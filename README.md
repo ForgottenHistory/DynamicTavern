@@ -77,6 +77,8 @@ Separate LLM configurations for different purposes:
 
 ## Setup
 
+run.bat does this automatically.
+
 1. Clone the repository
 2. Install dependencies:
    ```bash
