@@ -432,13 +432,13 @@
 								</div>
 
 								<div>
-									<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Name</label>
-									<input type="text" bind:value={newPersonaName} placeholder="Persona name..." class="w-full px-4 py-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]" />
+									<label for="new-persona-name" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Name</label>
+									<input id="new-persona-name" type="text" bind:value={newPersonaName} placeholder="Persona name..." class="w-full px-4 py-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]" />
 								</div>
 
 								<div>
-									<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Description</label>
-									<textarea bind:value={newPersonaDescription} rows="4" placeholder="Describe this persona for roleplay..." class="w-full px-4 py-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] placeholder-[var(--text-muted)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] resize-none"></textarea>
+									<label for="new-persona-description" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Description</label>
+									<textarea id="new-persona-description" bind:value={newPersonaDescription} rows="4" placeholder="Describe this persona for roleplay..." class="w-full px-4 py-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] placeholder-[var(--text-muted)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] resize-none"></textarea>
 								</div>
 
 								<div class="flex gap-3 pt-2">
@@ -510,12 +510,12 @@
 							{:else}
 								<form onsubmit={(e) => { e.preventDefault(); handleSave(); }} class="space-y-4">
 									<div>
-										<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Display Name</label>
-										<input type="text" bind:value={displayName} class="w-full px-4 py-2.5 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]" required />
+										<label for="profile-display-name" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Display Name</label>
+										<input id="profile-display-name" type="text" bind:value={displayName} class="w-full px-4 py-2.5 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]" required />
 									</div>
 									<div>
-										<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Description</label>
-										<textarea bind:value={bio} rows="4" placeholder="Describe yourself for roleplay..." class="w-full px-4 py-2.5 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] placeholder-[var(--text-muted)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] resize-none"></textarea>
+										<label for="profile-bio" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Description</label>
+										<textarea id="profile-bio" bind:value={bio} rows="4" placeholder="Describe yourself for roleplay..." class="w-full px-4 py-2.5 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] placeholder-[var(--text-muted)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] resize-none"></textarea>
 									</div>
 									<div class="flex gap-3">
 										<button type="submit" disabled={saving} class="px-5 py-2.5 bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-white rounded-xl font-medium hover:opacity-90 disabled:opacity-50 transition">
@@ -590,12 +590,12 @@
 							{:else}
 								<form onsubmit={(e) => { e.preventDefault(); updatePersona(); }} class="space-y-4">
 									<div>
-										<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Name</label>
-										<input type="text" bind:value={editingName} class="w-full px-4 py-2.5 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]" required />
+										<label for="edit-persona-name" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Name</label>
+										<input id="edit-persona-name" type="text" bind:value={editingName} class="w-full px-4 py-2.5 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]" required />
 									</div>
 									<div>
-										<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Description</label>
-										<textarea bind:value={editingDescription} rows="4" placeholder="Describe this persona for roleplay..." class="w-full px-4 py-2.5 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] placeholder-[var(--text-muted)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] resize-none"></textarea>
+										<label for="edit-persona-description" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Description</label>
+										<textarea id="edit-persona-description" bind:value={editingDescription} rows="4" placeholder="Describe this persona for roleplay..." class="w-full px-4 py-2.5 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] placeholder-[var(--text-muted)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] resize-none"></textarea>
 									</div>
 									<div class="flex gap-3">
 										<button type="submit" disabled={saving} class="px-5 py-2.5 bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-white rounded-xl font-medium hover:opacity-90 disabled:opacity-50 transition">

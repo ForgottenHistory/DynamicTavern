@@ -41,8 +41,9 @@
 >
 	<!-- Provider Selection -->
 	<div>
-		<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Provider</label>
+		<label for="llm-provider" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Provider</label>
 		<select
+			id="llm-provider"
 			bind:value={settings.provider}
 			class="w-full px-4 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
 		>
@@ -54,6 +55,7 @@
 
 	<!-- Model Selection -->
 	<div>
+		<!-- svelte-ignore a11y_label_has_associated_control -->
 		<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Model</label>
 		<ModelSelector
 			selectedModel={settings.model}
@@ -64,10 +66,11 @@
 
 	<!-- Temperature -->
 	<div>
-		<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+		<label for="llm-temperature" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
 			Temperature: {settings.temperature}
 		</label>
 		<input
+			id="llm-temperature"
 			type="range"
 			bind:value={settings.temperature}
 			min="0"
@@ -82,8 +85,9 @@
 
 	<!-- Max Tokens -->
 	<div>
-		<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Max Tokens</label>
+		<label for="llm-max-tokens" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Max Tokens</label>
 		<input
+			id="llm-max-tokens"
 			type="number"
 			bind:value={settings.maxTokens}
 			min="50"
@@ -96,8 +100,9 @@
 
 	<!-- Context Window -->
 	<div>
-		<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Context Window</label>
+		<label for="llm-context-window" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Context Window</label>
 		<input
+			id="llm-context-window"
 			type="number"
 			bind:value={settings.contextWindow}
 			min="1000"
@@ -112,7 +117,7 @@
 	{#if settings.provider === 'openrouter'}
 		<div class="flex items-center justify-between p-4 bg-[var(--bg-tertiary)] rounded-xl">
 			<div>
-				<label class="block text-sm font-medium text-[var(--text-primary)]">Extended Thinking</label>
+				<span class="block text-sm font-medium text-[var(--text-primary)]">Extended Thinking</span>
 				<p class="text-xs text-[var(--text-muted)] mt-1">
 					Enable reasoning for models that support it (OpenRouter)
 				</p>
@@ -136,10 +141,11 @@
 
 			<!-- Top K -->
 			<div>
-				<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+				<label for="llm-top-k" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
 					Top K: {settings.topK ?? -1}
 				</label>
 				<input
+					id="llm-top-k"
 					type="range"
 					bind:value={settings.topK}
 					min="-1"
@@ -154,10 +160,11 @@
 
 			<!-- Min P -->
 			<div>
-				<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+				<label for="llm-min-p" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
 					Min P: {(settings.minP ?? 0).toFixed(2)}
 				</label>
 				<input
+					id="llm-min-p"
 					type="range"
 					bind:value={settings.minP}
 					min="0"
@@ -172,10 +179,11 @@
 
 			<!-- Repetition Penalty -->
 			<div>
-				<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+				<label for="llm-repetition-penalty" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
 					Repetition Penalty: {(settings.repetitionPenalty ?? 1.0).toFixed(2)}
 				</label>
 				<input
+					id="llm-repetition-penalty"
 					type="range"
 					bind:value={settings.repetitionPenalty}
 					min="1"
@@ -200,10 +208,11 @@
 		<div class="px-4 py-4 space-y-4 border-t border-[var(--border-primary)]">
 			<!-- Top P -->
 			<div>
-				<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+				<label for="llm-top-p" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
 					Top P: {settings.topP}
 				</label>
 				<input
+					id="llm-top-p"
 					type="range"
 					bind:value={settings.topP}
 					min="0"
@@ -216,10 +225,11 @@
 
 			<!-- Frequency Penalty -->
 			<div>
-				<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+				<label for="llm-freq-penalty" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
 					Frequency Penalty: {settings.frequencyPenalty}
 				</label>
 				<input
+					id="llm-freq-penalty"
 					type="range"
 					bind:value={settings.frequencyPenalty}
 					min="0"
@@ -234,10 +244,11 @@
 
 			<!-- Presence Penalty -->
 			<div>
-				<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+				<label for="llm-presence-penalty" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
 					Presence Penalty: {settings.presencePenalty}
 				</label>
 				<input
+					id="llm-presence-penalty"
 					type="range"
 					bind:value={settings.presencePenalty}
 					min="0"

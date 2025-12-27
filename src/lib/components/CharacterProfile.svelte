@@ -235,6 +235,7 @@
 </script>
 
 {#if character}
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
 		class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
 		onclick={(e) => {
@@ -242,8 +243,10 @@
 				onClose();
 			}
 		}}
+		onkeydown={(e) => e.key === 'Escape' && onClose()}
 		role="dialog"
 		aria-modal="true"
+		tabindex="-1"
 	>
 		<div
 			class="bg-[var(--bg-secondary)] rounded-2xl max-w-4xl w-full h-[85vh] overflow-hidden shadow-2xl border border-[var(--border-primary)] flex"

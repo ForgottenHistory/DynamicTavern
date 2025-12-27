@@ -155,6 +155,7 @@
 					contenteditable="true"
 					onkeydown={handleKeydown}
 					role="textbox"
+					tabindex="0"
 					class="outline-none whitespace-pre-wrap"
 					style="min-height: 1.5em;"
 				>{message.content}</div>

@@ -329,7 +329,7 @@
 		class="sd-image-thumbnail"
 		onclick={() => showLightbox = true}
 	>
-		<img src={imageSrc} alt="Generated image" />
+		<img src={imageSrc} alt="" />
 	</button>
 
 	<!-- Lightbox -->
@@ -346,12 +346,13 @@
 				type="button"
 				class="lightbox-close"
 				onclick={() => showLightbox = false}
+				aria-label="Close image"
 			>
 				<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
 				</svg>
 			</button>
-			<img src={imageSrc} alt="Generated image full size" class="lightbox-image" />
+			<img src={imageSrc} alt="" class="lightbox-image" />
 			<p class="lightbox-prompt">{imagePrompt}</p>
 		</div>
 	{/if}

@@ -192,7 +192,15 @@
 
 <!-- Dropdown Menu (portal-style) -->
 {#if showMenu}
-	<div class="fixed inset-0 z-[998]" onclick={() => (showMenu = false)}></div>
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="fixed inset-0 z-[998]"
+		onclick={() => (showMenu = false)}
+		onkeydown={(e) => e.key === 'Escape' && (showMenu = false)}
+		role="button"
+		tabindex="-1"
+		aria-label="Close menu"
+	></div>
 	<div
 		class="fixed bg-[var(--bg-secondary)] backdrop-blur-md border border-[var(--border-primary)] rounded-xl shadow-xl py-1 min-w-[180px] z-[999]"
 		style="left: {menuPosition.x}px; top: {menuPosition.y}px;"

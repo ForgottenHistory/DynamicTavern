@@ -193,6 +193,7 @@
 					contenteditable="true"
 					onkeydown={handleKeydown}
 					role="textbox"
+					tabindex="0"
 					class="outline-none whitespace-pre-wrap text-[var(--text-primary)]"
 					style="min-height: 1.5em;"
 				>{message.content}</div>

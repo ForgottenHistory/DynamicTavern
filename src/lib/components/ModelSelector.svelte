@@ -97,7 +97,8 @@
 		>
 			<!-- Search Input -->
 			<div class="p-3 border-b border-[var(--border-primary)]">
-				<input
+				<!-- svelte-ignore a11y_autofocus -->
+			<input
 					type="text"
 					bind:value={searchQuery}
 					placeholder="Search models..."

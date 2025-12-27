@@ -215,6 +215,7 @@
 							onmousedown={(e) => e.preventDefault()}
 							onclick={clearSearch}
 							class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition"
+							aria-label="Clear search"
 						>
 							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -298,6 +299,7 @@
 							onmouseenter={() => (hoveredCharacterId = character.id)}
 							onmouseleave={() => (hoveredCharacterId = null)}
 							onclick={() => (selectedCharacter = character)}
+							onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (selectedCharacter = character)}
 							role="button"
 							tabindex="0"
 						>
@@ -379,6 +381,7 @@
 						<div
 							class="group flex items-center gap-4 p-3 cursor-pointer hover:bg-[var(--bg-tertiary)] transition {index !== filteredCharacters.length - 1 ? 'border-b border-[var(--border-primary)]' : ''}"
 							onclick={() => (selectedCharacter = character)}
+							onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (selectedCharacter = character)}
 							onmouseenter={() => (hoveredCharacterId = character.id)}
 							onmouseleave={() => (hoveredCharacterId = null)}
 							role="button"

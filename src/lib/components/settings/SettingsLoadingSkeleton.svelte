@@ -4,23 +4,23 @@
 <div class="p-6">
 	<div class="space-y-6">
 		<div>
-			<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Provider</label>
+			<span class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Provider</span>
 			<div class="w-full h-10 bg-[var(--bg-tertiary)] rounded-xl animate-pulse"></div>
 		</div>
 		<div>
-			<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Model</label>
+			<span class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Model</span>
 			<div class="w-full h-10 bg-[var(--bg-tertiary)] rounded-xl animate-pulse"></div>
 		</div>
 		<div>
-			<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Temperature: 0.7</label>
+			<span class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Temperature: 0.7</span>
 			<div class="w-full h-2 bg-[var(--bg-tertiary)] rounded animate-pulse"></div>
 		</div>
 		<div>
-			<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Max Tokens</label>
+			<span class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Max Tokens</span>
 			<div class="w-full h-10 bg-[var(--bg-tertiary)] rounded-xl animate-pulse"></div>
 		</div>
 		<div>
-			<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Context Window</label>
+			<span class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Context Window</span>
 			<div class="w-full h-10 bg-[var(--bg-tertiary)] rounded-xl animate-pulse"></div>
 		</div>
 	</div>

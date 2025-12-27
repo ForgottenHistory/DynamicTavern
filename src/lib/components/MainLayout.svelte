@@ -1,11 +1,13 @@
 <script lang="ts">
 	import type { SafeUser, Character } from '$lib/server/db/schema';
+	import type { Snippet } from 'svelte';
 	import { onMount } from 'svelte';
 	import { getCharactersCache, setCharactersCache, isCharactersCacheLoaded } from '$lib/stores/characters';
 
 	interface Props {
 		user: SafeUser;
 		currentPath: string;
+		children: Snippet;
 	}
 
 	interface ActivePersonaInfo {
@@ -15,7 +17,7 @@
 		personaId: number | null;
 	}
 
-	let { user, currentPath }: Props = $props();
+	let { user, currentPath, children }: Props = $props();
 
 	let sidebarCollapsed = $state(false);
 	let characters = $state<Character[]>(getCharactersCache());
@@ -155,6 +157,7 @@
 								onmousedown={(e) => e.preventDefault()}
 								onclick={clearSearch}
 								class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition"
+								aria-label="Clear search"
 							>
 								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -506,7 +509,7 @@
 
 		<!-- Page Content -->
 		<div class="flex-1 overflow-hidden">
-			<slot />
+			{@render children()}
 		</div>
 	</div>
 </div>

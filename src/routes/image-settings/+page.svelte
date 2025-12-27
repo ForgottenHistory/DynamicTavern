@@ -171,10 +171,11 @@
 					>
 						<!-- Main Prompt -->
 						<div>
-							<label class="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+							<label for="sd-main-prompt" class="block text-sm font-semibold text-[var(--text-primary)] mb-2">
 								Main Prompt
 							</label>
 							<textarea
+								id="sd-main-prompt"
 								bind:value={settings.mainPrompt}
 								rows={3}
 								class="w-full px-4 py-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] placeholder-[var(--text-muted)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
@@ -187,10 +188,11 @@
 
 						<!-- Negative Prompt -->
 						<div>
-							<label class="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+							<label for="sd-negative-prompt" class="block text-sm font-semibold text-[var(--text-primary)] mb-2">
 								Negative Prompt
 							</label>
 							<textarea
+								id="sd-negative-prompt"
 								bind:value={settings.negativePrompt}
 								rows={4}
 								class="w-full px-4 py-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] placeholder-[var(--text-muted)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
@@ -203,10 +205,11 @@
 
 						<!-- Model -->
 						<div>
-							<label class="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+							<label for="sd-model" class="block text-sm font-semibold text-[var(--text-primary)] mb-2">
 								Stable Diffusion Model
 							</label>
 							<input
+								id="sd-model"
 								type="text"
 								bind:value={settings.model}
 								class="w-full px-4 py-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] placeholder-[var(--text-muted)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
@@ -223,10 +226,11 @@
 
 							<div class="grid grid-cols-2 gap-4">
 								<div>
-									<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+									<label for="sd-steps" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
 										Sampling Steps
 									</label>
 									<input
+										id="sd-steps"
 										type="number"
 										bind:value={settings.steps}
 										min={1}
@@ -236,10 +240,11 @@
 								</div>
 
 								<div>
-									<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+									<label for="sd-cfg" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
 										CFG Scale
 									</label>
 									<input
+										id="sd-cfg"
 										type="number"
 										bind:value={settings.cfgScale}
 										min={1}
@@ -252,10 +257,11 @@
 
 							<div class="grid grid-cols-2 gap-4">
 								<div>
-									<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+									<label for="sd-sampler" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
 										Sampler
 									</label>
 									<input
+										id="sd-sampler"
 										type="text"
 										bind:value={settings.sampler}
 										placeholder="e.g., DPM++ 2M, Euler a"
@@ -264,10 +270,11 @@
 								</div>
 
 								<div>
-									<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+									<label for="sd-scheduler" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
 										Scheduler
 									</label>
 									<input
+										id="sd-scheduler"
 										type="text"
 										bind:value={settings.scheduler}
 										placeholder="e.g., Karras, Exponential"
@@ -295,10 +302,11 @@
 								<div class="space-y-4 pl-4 border-l-2 border-[var(--accent-primary)]/50">
 									<div class="grid grid-cols-2 gap-4">
 										<div>
-											<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+											<label for="sd-hr-scale" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
 												Upscale Factor
 											</label>
 											<input
+												id="sd-hr-scale"
 												type="number"
 												bind:value={settings.hrScale}
 												min={1.0}
@@ -309,10 +317,11 @@
 										</div>
 
 										<div>
-											<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+											<label for="sd-hr-upscaler" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
 												Upscaler
 											</label>
 											<input
+												id="sd-hr-upscaler"
 												type="text"
 												bind:value={settings.hrUpscaler}
 												placeholder="e.g., Latent, ESRGAN_4x"
@@ -323,10 +332,11 @@
 
 									<div class="grid grid-cols-3 gap-4">
 										<div>
-											<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+											<label for="sd-hr-steps" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
 												Highres Steps
 											</label>
 											<input
+												id="sd-hr-steps"
 												type="number"
 												bind:value={settings.hrSteps}
 												min={0}
@@ -336,10 +346,11 @@
 										</div>
 
 										<div>
-											<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+											<label for="sd-hr-cfg" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
 												Highres CFG
 											</label>
 											<input
+												id="sd-hr-cfg"
 												type="number"
 												bind:value={settings.hrCfg}
 												min={1}
@@ -350,10 +361,11 @@
 										</div>
 
 										<div>
-											<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+											<label for="sd-denoising" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
 												Denoising Strength
 											</label>
 											<input
+												id="sd-denoising"
 												type="number"
 												bind:value={settings.denoisingStrength}
 												min={0}
@@ -383,10 +395,11 @@
 
 							{#if settings.enableAdetailer}
 								<div class="pl-4 border-l-2 border-[var(--accent-primary)]/50">
-									<label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+									<label for="sd-adetailer-model" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
 										Detection Model
 									</label>
 									<input
+										id="sd-adetailer-model"
 										type="text"
 										bind:value={settings.adetailerModel}
 										placeholder="e.g., face_yolov8n.pt"

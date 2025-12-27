@@ -15,8 +15,11 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let chatMessages: ChatMessages;
-	let chatInput: ChatInput;
+	// Component references for bind:this - these don't need $state
+	// svelte-ignore non_reactive_update
+	let chatMessages: ChatMessages | undefined;
+	// svelte-ignore non_reactive_update
+	let chatInput: ChatInput | undefined;
 
 	const state = createChatState({
 		characterId: data.characterId,

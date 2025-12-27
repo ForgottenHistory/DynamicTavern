@@ -295,6 +295,7 @@
 										type="button"
 										role="switch"
 										aria-checked={textCleanupEnabled}
+										aria-label="Toggle text cleanup"
 										onclick={() => textCleanupEnabled = !textCleanupEnabled}
 										class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {textCleanupEnabled ? 'bg-[var(--accent-primary)]' : 'bg-[var(--bg-tertiary)]'}"
 									>
@@ -317,6 +318,7 @@
 											type="button"
 											role="switch"
 											aria-checked={autoWrapActions}
+											aria-label="Toggle auto-wrap plain text"
 											onclick={() => autoWrapActions = !autoWrapActions}
 											class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {autoWrapActions ? 'bg-[var(--accent-primary)]' : 'bg-[var(--bg-tertiary)]'}"
 										>
