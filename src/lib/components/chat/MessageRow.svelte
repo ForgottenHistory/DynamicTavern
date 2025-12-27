@@ -43,15 +43,16 @@
 
 	let isUser = $derived(message.role === 'user');
 	let isSystem = $derived(message.role === 'system');
+	let isNarrator = $derived(message.role === 'narrator');
 	let showSwipeControls = $derived(message.role === 'assistant' && isLast);
 	let showGeneratingPlaceholder = $derived(generating && isLast && message.role === 'assistant');
 
 	// Display info - prefer stored sender info, fall back to current names
 	let displayName = $derived(
 		message.senderName ||
-		(isSystem ? 'System' : (isUser ? (userName || 'User') : (charName || 'Assistant')))
+		(isNarrator ? 'Narrator' : (isSystem ? 'System' : (isUser ? (userName || 'User') : (charName || 'Assistant'))))
 	);
-	let avatar = $derived(isSystem ? null : (message.senderAvatar || (isUser ? userAvatar : charAvatar)));
+	let avatar = $derived(isSystem || isNarrator ? null : (message.senderAvatar || (isUser ? userAvatar : charAvatar)));
 	let avatarClass = $derived(avatarStyle === 'rounded' ? 'rounded-xl' : 'rounded-full');
 	let avatarSize = $derived(avatarStyle === 'rounded' ? 'w-12 h-16' : 'w-12 h-12');
 
@@ -126,6 +127,13 @@
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
 				</svg>
 			</div>
+		{:else if isNarrator}
+			<!-- Narrator icon (book) -->
+			<div class="w-12 h-12 rounded-full bg-[var(--bg-tertiary)] border border-[var(--border-primary)] flex items-center justify-center">
+				<svg class="w-6 h-6 text-[var(--text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+				</svg>
+			</div>
 		{:else if avatar}
 			<img
 				src={avatar}
@@ -145,7 +153,7 @@
 	<div class="flex-1 min-w-0">
 		<!-- Header: Name and timestamp -->
 		<div class="flex items-baseline gap-2 mb-1">
-			<span class="font-semibold {isSystem ? 'text-[var(--warning)]' : isUser ? 'text-[var(--accent-primary)]' : 'text-[var(--accent-secondary)]'}">
+			<span class="font-semibold {isNarrator ? 'text-[var(--text-secondary)]' : isSystem ? 'text-[var(--warning)]' : isUser ? 'text-[var(--accent-primary)]' : 'text-[var(--accent-secondary)]'}">
 				{displayName}
 			</span>
 			<span class="text-xs text-[var(--text-muted)]">

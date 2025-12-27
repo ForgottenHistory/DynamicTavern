@@ -4,6 +4,7 @@ import { messages, conversations, characters, llmSettings } from '$lib/server/db
 import { eq, and, lt } from 'drizzle-orm';
 import { generateChatCompletion } from '$lib/server/llm';
 import { emitMessage, emitTyping } from '$lib/server/socket';
+import { sceneService } from '$lib/server/services/sceneService';
 
 // POST - Regenerate message fresh (delete old message and create completely new one)
 export const POST: RequestHandler = async ({ params, cookies }) => {
@@ -43,12 +44,18 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 			return json({ error: 'Can only regenerate assistant messages' }, { status: 400 });
 		}
 
-		// Get character
-		const [character] = await db
-			.select()
-			.from(characters)
-			.where(eq(characters.id, conversation.characterId))
-			.limit(1);
+		// Get character - use scene service or fall back to legacy characterId
+		let character = await sceneService.getPrimaryCharacter(conversation.id);
+		if (!character) {
+			const charId = conversation.primaryCharacterId ?? conversation.characterId;
+			if (charId) {
+				[character] = await db
+					.select()
+					.from(characters)
+					.where(eq(characters.id, charId))
+					.limit(1);
+			}
+		}
 
 		if (!character) {
 			return json({ error: 'Character not found' }, { status: 404 });

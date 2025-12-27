@@ -6,6 +6,7 @@ import { generateChatCompletion } from '$lib/server/llm';
 import { emitTyping } from '$lib/server/socket';
 import { sdService } from '$lib/server/services/sdService';
 import { sdSettingsService } from '$lib/server/services/sdSettingsService';
+import { sceneService } from '$lib/server/services/sceneService';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -49,12 +50,18 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 			return json({ error: 'Can only regenerate assistant messages' }, { status: 400 });
 		}
 
-		// Get character
-		const [character] = await db
-			.select()
-			.from(characters)
-			.where(eq(characters.id, conversation.characterId))
-			.limit(1);
+		// Get character - use scene service or fall back to legacy characterId
+		let character = await sceneService.getPrimaryCharacter(conversation.id);
+		if (!character) {
+			const charId = conversation.primaryCharacterId ?? conversation.characterId;
+			if (charId) {
+				[character] = await db
+					.select()
+					.from(characters)
+					.where(eq(characters.id, charId))
+					.limit(1);
+			}
+		}
 
 		if (!character) {
 			return json({ error: 'Character not found' }, { status: 404 });

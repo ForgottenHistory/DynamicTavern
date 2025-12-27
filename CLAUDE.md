@@ -46,10 +46,40 @@ npm run db:studio     # Open Drizzle Studio (visual DB editor)
 
 ### Database Schema (`src/lib/server/db/schema.ts`)
 
-Tables: users, llmSettings, decisionEngineSettings, contentLlmSettings, imageLlmSettings, llmPresets, characters, tagLibrary, conversations, messages
+Tables: users, llmSettings, decisionEngineSettings, contentLlmSettings, imageLlmSettings, llmPresets, characters, tagLibrary, conversations, messages, sceneParticipants
 
 - Characters store card data as JSON, images as Base64
 - Messages support "swipes" (alternative responses) as JSON array
+
+### Scene-Based Chat System
+
+The chat system uses a scene + narrator paradigm where multiple characters can participate:
+
+**Key Tables:**
+- `sceneParticipants` - Tracks which characters are in each conversation/scene
+  - `conversationId`, `characterId`, `isActive`, `joinedAt`, `leftAt`
+- `conversations.primaryCharacterId` - The main character for a scene
+- `messages.characterId` - Which character sent an assistant message (null for narrator/user)
+
+**Message Roles:**
+| Role | Description |
+|------|-------------|
+| `user` | Player messages |
+| `assistant` | Character dialogue (has characterId) |
+| `narrator` | AI-generated scene descriptions |
+| `system` | Technical/look command outputs |
+
+**Scene Flow:**
+1. Start chat → Narrator generates scene intro
+2. Primary character delivers greeting
+3. Characters can enter/leave via `/api/chat/[conversationId]/characters/add` and `/remove`
+4. Narrator announces entries/exits
+
+**Key Service:** `sceneService.ts`
+- `getActiveCharacters(conversationId)` - Characters currently in scene
+- `addCharacterToScene(conversationId, characterId)` - Add character
+- `removeCharacterFromScene(conversationId, characterId)` - Remove character
+- `getPrimaryCharacter(conversationId)` - Get responding character
 
 ### Multi-LLM Architecture
 

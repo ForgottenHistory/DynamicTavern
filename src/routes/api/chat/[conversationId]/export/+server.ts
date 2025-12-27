@@ -32,18 +32,22 @@ export const GET: RequestHandler = async ({ params, cookies }) => {
 			return json({ error: 'Conversation not found' }, { status: 404 });
 		}
 
-		// Get character info
-		const [character] = await db
-			.select({
-				id: characters.id,
-				name: characters.name,
-				description: characters.description,
-				tags: characters.tags,
-				cardData: characters.cardData
-			})
-			.from(characters)
-			.where(eq(characters.id, conversation.characterId))
-			.limit(1);
+		// Get character info (use primaryCharacterId or legacy characterId)
+		const charId = conversation.primaryCharacterId ?? conversation.characterId;
+		let character = null;
+		if (charId) {
+			[character] = await db
+				.select({
+					id: characters.id,
+					name: characters.name,
+					description: characters.description,
+					tags: characters.tags,
+					cardData: characters.cardData
+				})
+				.from(characters)
+				.where(eq(characters.id, charId))
+				.limit(1);
+		}
 
 		// Get all messages
 		const conversationMessages = await db

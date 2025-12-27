@@ -183,8 +183,8 @@ export function createChatState(options: ChatStateOptions) {
 
 			if (conversationId) {
 				joinConversation(conversationId);
-				// Load saved clothes for existing conversation
-				clothesActions.loadClothes();
+				// Load saved clothes for existing conversation - Legacy feature disabled
+				// clothesActions.loadClothes();
 			}
 
 			setTimeout(() => options.onScrollToBottom(), 100);
@@ -212,8 +212,8 @@ export function createChatState(options: ChatStateOptions) {
 		joinConversation(newConversationId);
 		await loadConversation();
 
-		// Generate clothes when conversation starts
-		clothesActions.generateClothes();
+		// Generate clothes when conversation starts - Legacy feature disabled
+		// clothesActions.generateClothes();
 	}
 
 	// Conversation reset

@@ -250,9 +250,10 @@ export const conversations = sqliteTable('conversations', {
 	userId: integer('user_id')
 		.notNull()
 		.references(() => users.id, { onDelete: 'cascade' }),
-	characterId: integer('character_id')
-		.notNull()
+	characterId: integer('character_id') // Legacy: kept for backwards compatibility, use sceneParticipants instead
 		.references(() => characters.id, { onDelete: 'cascade' }),
+	primaryCharacterId: integer('primary_character_id') // Optional "main" character for this scene
+		.references(() => characters.id, { onDelete: 'set null' }),
 	name: text('name'), // Branch name (null for main conversation)
 	parentConversationId: integer('parent_conversation_id'), // ID of conversation this branched from
 	branchPointMessageId: integer('branch_point_message_id'), // Message ID where branch was created
@@ -269,7 +270,9 @@ export const messages = sqliteTable('messages', {
 	conversationId: integer('conversation_id')
 		.notNull()
 		.references(() => conversations.id, { onDelete: 'cascade' }),
-	role: text('role').notNull(), // 'user' or 'assistant'
+	role: text('role').notNull(), // 'user' | 'assistant' | 'narrator' | 'system'
+	characterId: integer('character_id') // Which character sent this (null for narrator/user/system)
+		.references(() => characters.id, { onDelete: 'set null' }),
 	content: text('content').notNull(),
 	swipes: text('swipes'), // JSON array of alternative content variants
 	currentSwipe: integer('current_swipe').default(0), // Index of currently selected swipe
@@ -279,6 +282,21 @@ export const messages = sqliteTable('messages', {
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.$defaultFn(() => new Date())
+});
+
+export const sceneParticipants = sqliteTable('scene_participants', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	conversationId: integer('conversation_id')
+		.notNull()
+		.references(() => conversations.id, { onDelete: 'cascade' }),
+	characterId: integer('character_id')
+		.notNull()
+		.references(() => characters.id, { onDelete: 'cascade' }),
+	isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true), // Currently in scene
+	joinedAt: integer('joined_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+	leftAt: integer('left_at', { mode: 'timestamp' }) // When character left scene (null = still present)
 });
 
 export type User = typeof users.$inferSelect;
@@ -313,3 +331,5 @@ export type Conversation = typeof conversations.$inferSelect;
 export type NewConversation = typeof conversations.$inferInsert;
 export type Message = typeof messages.$inferSelect;
 export type NewMessage = typeof messages.$inferInsert;
+export type SceneParticipant = typeof sceneParticipants.$inferSelect;
+export type NewSceneParticipant = typeof sceneParticipants.$inferInsert;

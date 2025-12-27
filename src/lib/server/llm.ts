@@ -3,7 +3,12 @@ import { llmLogService } from './services/llmLogService';
 import { personaService } from './services/personaService';
 import { lorebookService } from './services/lorebookService';
 import { worldInfoService } from './services/worldInfoService';
+import { sceneService } from './services/sceneService';
+import { contentLlmSettingsService } from './services/contentLlmSettingsService';
 import { logger } from './utils/logger';
+import { db } from './db';
+import { messages, conversations } from './db/schema';
+import { eq, desc } from 'drizzle-orm';
 import type { Message, Character, LlmSettings } from './db/schema';
 import type { LlmSettingsData } from './services/llmSettingsFileService';
 import type { ImpersonateStyle } from '$lib/types/chat';
@@ -34,7 +39,10 @@ const DEFAULT_NARRATION_PROMPTS: Record<string, string> = {
 	look_character: `You are a narrator. Briefly describe {{char}}'s current appearance and expression. Keep it to 2-3 sentences.`,
 	look_scene: `You are a narrator. Briefly describe the current environment. Keep it to 2-3 sentences.`,
 	narrate: `You are a narrator. Briefly describe what is happening in the scene. Keep it to 2-3 sentences.`,
-	look_item: `You are a narrator. Briefly describe {{item_owner}}'s {{item_name}} in detail. Keep it to 2-3 sentences.`
+	look_item: `You are a narrator. Briefly describe {{item_owner}}'s {{item_name}} in detail. Keep it to 2-3 sentences.`,
+	enter_scene: `You are a narrator. {{character_name}} has just entered the scene. Briefly describe their entrance in 1-2 sentences. Be dramatic but concise.`,
+	leave_scene: `You are a narrator. {{character_name}} is leaving the scene. Briefly describe their departure in 1-2 sentences. Be natural and concise.`,
+	scene_intro: `You are a narrator setting the stage for a roleplay scene. The following characters are present: {{character_names}}. Briefly describe the scene opening in 2-3 sentences. Set the atmosphere and describe the setting.`
 };
 
 const PROMPTS_DIR = path.join(process.cwd(), 'data', 'prompts');
@@ -397,12 +405,17 @@ export async function generateImpersonation(
 	return content;
 }
 
-export type NarrationType = 'look_character' | 'look_scene' | 'narrate' | 'look_item';
+export type NarrationType = 'look_character' | 'look_scene' | 'narrate' | 'look_item' | 'enter_scene' | 'leave_scene' | 'scene_intro';
 
 export interface ItemContext {
 	owner: string;
 	itemName: string;
 	itemDescription: string;
+}
+
+export interface SceneContext {
+	characterName?: string;
+	characterNames?: string[];
 }
 
 /**
@@ -542,6 +555,128 @@ export async function generateNarration(
 
 	// Log response for debugging
 	llmLogService.saveResponseLog(response.content, response.content, 'action', logId, response);
+
+	return {
+		content: response.content,
+		reasoning: response.reasoning || null
+	};
+}
+
+/**
+ * Generate scene-based narration (simplified version for scene actions)
+ * @param userId - User ID for settings lookup
+ * @param conversationId - Conversation/scene ID
+ * @param narrateType - Type of scene narration
+ * @param sceneContext - Context for the narration (character name, etc.)
+ * @returns Generated narration content and reasoning
+ */
+export async function generateSceneNarration(
+	userId: number,
+	conversationId: number,
+	narrateType: NarrationType,
+	sceneContext?: SceneContext
+): Promise<ChatCompletionResult> {
+	// Get content LLM settings for narration
+	const settings = contentLlmSettingsService.getSettings();
+
+	// Get conversation for scenario
+	const [conversation] = await db
+		.select()
+		.from(conversations)
+		.where(eq(conversations.id, conversationId))
+		.limit(1);
+
+	// Get active user info
+	const userInfo = await personaService.getActiveUserInfo(userId);
+	const userName = userInfo.name;
+
+	// Get active characters in scene
+	const activeCharacters = await sceneService.getActiveCharacters(conversationId);
+	const characterNames = activeCharacters.map((c) => c.name).join(', ');
+
+	// Get recent conversation history
+	const recentMessages = await db
+		.select()
+		.from(messages)
+		.where(eq(messages.conversationId, conversationId))
+		.orderBy(desc(messages.createdAt))
+		.limit(10);
+
+	// Format history
+	const historyText = recentMessages
+		.reverse()
+		.map((msg) => {
+			let name = userName;
+			if (msg.role === 'assistant') {
+				name = msg.senderName || 'Character';
+			} else if (msg.role === 'narrator') {
+				name = 'Narrator';
+			} else if (msg.role === 'system') {
+				name = 'System';
+			}
+			return `${name}: ${msg.content}`;
+		})
+		.join('\n\n');
+
+	// Get world info
+	let worldText = '';
+	const primaryChar = activeCharacters[0];
+	if (primaryChar) {
+		const worldInfo = await worldInfoService.getWorldInfo(conversationId);
+		worldText = worldInfoService.formatWorldInfoForPrompt(worldInfo, primaryChar.name, userName);
+	}
+
+	// Load narration prompt from file
+	const basePrompt = await loadNarrationPromptFromFile(narrateType);
+
+	// Replace template variables
+	let narratorPrompt = basePrompt
+		.replace(/\{\{character_name\}\}/g, sceneContext?.characterName || '')
+		.replace(/\{\{character_names\}\}/g, sceneContext?.characterNames?.join(', ') || characterNames)
+		.replace(/\{\{user\}\}/g, userName)
+		.replace(/\{\{world\}\}/g, worldText)
+		.replace(/\{\{scenario\}\}/g, conversation?.scenario || '')
+		.replace(/\{\{history\}\}/g, historyText);
+
+	// Format as system message
+	const formattedMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+		{
+			role: 'system',
+			content: narratorPrompt.trim()
+		}
+	];
+
+	// Log prompt for debugging
+	const logId = llmLogService.savePromptLog(
+		formattedMessages,
+		'scene_narration',
+		'Narrator',
+		userName
+	);
+
+	logger.info(`Generating scene narration (${narrateType})`, {
+		user: userName,
+		model: settings.model,
+		activeCharacters: characterNames
+	});
+
+	// Call LLM service
+	const response = await llmService.createChatCompletion({
+		messages: formattedMessages,
+		userId,
+		model: settings.model,
+		temperature: settings.temperature,
+		maxTokens: settings.maxTokens
+	});
+
+	logger.success(`Generated scene narration (${narrateType})`, {
+		model: response.model,
+		contentLength: response.content.length,
+		tokensUsed: response.usage?.total_tokens
+	});
+
+	// Log response for debugging
+	llmLogService.saveResponseLog(response.content, response.content, 'scene_narration', logId, response);
 
 	return {
 		content: response.content,

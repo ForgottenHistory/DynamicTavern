@@ -5,6 +5,7 @@ import { eq, and } from 'drizzle-orm';
 import { generateChatCompletion } from '$lib/server/llm';
 import { emitMessage, emitTyping } from '$lib/server/socket';
 import { personaService } from '$lib/server/services/personaService';
+import { sceneService } from '$lib/server/services/sceneService';
 
 // POST - Send a message and get AI response
 export const POST: RequestHandler = async ({ params, request, cookies }) => {
@@ -44,9 +45,13 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 				.values({
 					userId: parseInt(userId),
 					characterId,
+					primaryCharacterId: characterId,
 					isActive: true
 				})
 				.returning();
+
+			// Initialize scene participant for new conversation
+			await sceneService.addCharacterToScene(conversation.id, characterId);
 		}
 
 		// Get active persona info for sender details
@@ -67,12 +72,19 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 		// Emit user message immediately via Socket.IO
 		emitMessage(conversation.id, userMessage);
 
-		// Get character
-		const [character] = await db
-			.select()
-			.from(characters)
-			.where(eq(characters.id, characterId))
-			.limit(1);
+		// Get responding character - use primary character or first active in scene
+		const respondingCharacter = await sceneService.getPrimaryCharacter(conversation.id);
+
+		// Fallback to legacy characterId if no scene participants
+		let character = respondingCharacter;
+		if (!character) {
+			const [fallbackChar] = await db
+				.select()
+				.from(characters)
+				.where(eq(characters.id, characterId))
+				.limit(1);
+			character = fallbackChar;
+		}
 
 		if (!character) {
 			return json({ error: 'Character not found' }, { status: 404 });
@@ -125,6 +137,7 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 			.values({
 				conversationId: conversation.id,
 				role: 'assistant',
+				characterId: character.id,
 				content: aiResult.content,
 				senderName: character.name,
 				senderAvatar: character.thumbnailData || character.imageData,

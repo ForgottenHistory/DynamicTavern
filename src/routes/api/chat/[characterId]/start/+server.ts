@@ -1,10 +1,12 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { conversations, messages, characters } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { scenarioService } from '$lib/server/services/scenarioService';
 import { contentLlmService } from '$lib/server/services/contentLlmService';
 import { personaService } from '$lib/server/services/personaService';
+import { sceneService } from '$lib/server/services/sceneService';
+import { generateSceneNarration } from '$lib/server/llm';
 
 // POST - Start a new chat with optional scenario
 export const POST: RequestHandler = async ({ params, cookies, request }) => {
@@ -20,9 +22,9 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 
 	try {
 		const body = await request.json();
-		const { scenarioId, useStandardGreeting } = body;
+		const { scenarioId, useStandardGreeting, additionalCharacterIds } = body;
 
-		// Get character
+		// Get primary character
 		const [character] = await db
 			.select()
 			.from(characters)
@@ -32,6 +34,22 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 		if (!character) {
 			return json({ error: 'Character not found' }, { status: 404 });
 		}
+
+		// Get additional characters if specified
+		let additionalCharacters: typeof character[] = [];
+		if (additionalCharacterIds && additionalCharacterIds.length > 0) {
+			additionalCharacters = await db
+				.select()
+				.from(characters)
+				.where(
+					and(
+						inArray(characters.id, additionalCharacterIds),
+						eq(characters.userId, parseInt(userId))
+					)
+				);
+		}
+
+		const allCharacters = [character, ...additionalCharacters];
 
 		// Parse card data
 		const cardData = character.cardData ? JSON.parse(character.cardData) : {};
@@ -48,14 +66,10 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 				)
 			);
 
-		let greetingContent: string | null = null;
 		let scenarioContent: string | null = null;
 
-		if (useStandardGreeting) {
-			// Use standard first_mes from character card
-			greetingContent = data.first_mes || null;
-		} else if (scenarioId) {
-			// Generate greeting from scenario
+		if (scenarioId) {
+			// Get scenario content
 			const scenario = await scenarioService.get(scenarioId);
 			if (!scenario) {
 				return json({ error: 'Scenario not found' }, { status: 404 });
@@ -69,47 +83,83 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 				char: character.name,
 				user: userInfo.name
 			});
-
-			// Generate custom greeting using Content LLM
-			greetingContent = await contentLlmService.generateScenarioGreeting({
-				characterName: character.name,
-				characterDescription: character.description || data.description || '',
-				characterPersonality: data.personality || '',
-				scenario: scenarioContent,
-				userName: userInfo.name
-			});
 		}
 
-		// Create new conversation (with scenario if custom)
+		// Create new conversation
 		const [conversation] = await db
 			.insert(conversations)
 			.values({
 				userId: parseInt(userId),
-				characterId,
+				characterId, // Legacy field for backwards compatibility
+				primaryCharacterId: characterId,
 				isActive: true,
 				scenario: scenarioContent
 			})
 			.returning();
 
-		// Insert greeting message if we have one
-		if (greetingContent && greetingContent.trim()) {
-			// For standard greeting, include alternate greetings as swipes
-			let swipes: string[] | null = null;
-			if (useStandardGreeting) {
+		// Add all characters as scene participants
+		for (const char of allCharacters) {
+			await sceneService.addCharacterToScene(conversation.id, char.id);
+		}
+
+		// Generate narrator scene intro
+		const narratorContent = await generateSceneNarration(
+			parseInt(userId),
+			conversation.id,
+			'scene_intro',
+			{ characterNames: allCharacters.map((c) => c.name) }
+		);
+
+		// Insert narrator intro message
+		await db.insert(messages).values({
+			conversationId: conversation.id,
+			role: 'narrator',
+			content: narratorContent.content,
+			senderName: 'Narrator',
+			reasoning: narratorContent.reasoning
+		});
+
+		// Insert character greeting(s)
+		if (useStandardGreeting) {
+			// Use standard first_mes from primary character card
+			const greetingContent = data.first_mes;
+			if (greetingContent && greetingContent.trim()) {
 				const alternateGreetings = data.alternate_greetings || [];
 				const allGreetings = [greetingContent.trim(), ...alternateGreetings.filter((g: string) => g && g.trim())];
-				swipes = allGreetings.length > 1 ? allGreetings : null;
-			}
+				const swipes = allGreetings.length > 1 ? allGreetings : null;
 
-			await db.insert(messages).values({
-				conversationId: conversation.id,
-				role: 'assistant',
-				content: greetingContent.trim(),
-				swipes: swipes ? JSON.stringify(swipes) : null,
-				currentSwipe: 0,
-				senderName: character.name,
-				senderAvatar: character.thumbnailData || character.imageData
+				await db.insert(messages).values({
+					conversationId: conversation.id,
+					role: 'assistant',
+					characterId: character.id,
+					content: greetingContent.trim(),
+					swipes: swipes ? JSON.stringify(swipes) : null,
+					currentSwipe: 0,
+					senderName: character.name,
+					senderAvatar: character.thumbnailData || character.imageData
+				});
+			}
+		} else if (scenarioId) {
+			// Generate custom greeting using Content LLM
+			const userInfo = await personaService.getActiveUserInfo(parseInt(userId));
+			const greetingContent = await contentLlmService.generateScenarioGreeting({
+				characterName: character.name,
+				characterDescription: character.description || data.description || '',
+				characterPersonality: data.personality || '',
+				scenario: scenarioContent || '',
+				userName: userInfo.name
 			});
+
+			if (greetingContent && greetingContent.trim()) {
+				await db.insert(messages).values({
+					conversationId: conversation.id,
+					role: 'assistant',
+					characterId: character.id,
+					content: greetingContent.trim(),
+					senderName: character.name,
+					senderAvatar: character.thumbnailData || character.imageData
+				});
+			}
 		}
 
 		return json({
