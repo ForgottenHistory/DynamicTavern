@@ -1,7 +1,7 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { characters, conversations } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { characters, conversations, messages } from '$lib/server/db/schema';
+import { eq, and, desc } from 'drizzle-orm';
 import { clothesGenerationService } from '$lib/server/services/clothesGenerationService';
 import { personaService } from '$lib/server/services/personaService';
 import { worldInfoService } from '$lib/server/services/worldInfoService';
@@ -99,12 +99,30 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 		// Get user info
 		const userInfo = await personaService.getActiveUserInfo(parseInt(userId));
 
-		// Generate clothes
+		// Get recent chat history (last 10 messages)
+		const recentMessages = await db
+			.select()
+			.from(messages)
+			.where(eq(messages.conversationId, conversation.id))
+			.orderBy(desc(messages.createdAt))
+			.limit(10);
+
+		// Format chat history (reverse to chronological order)
+		const chatHistory = recentMessages
+			.reverse()
+			.map((m) => {
+				const name = m.role === 'user' ? userInfo.name : (m.role === 'assistant' ? character.name : 'Narrator');
+				return `[${name}] ${m.content}`;
+			})
+			.join('\n\n');
+
+		// Generate clothes - use conversation scenario (selected by user) or fall back to character card
 		const clothes = await clothesGenerationService.generateClothes({
 			characterName: character.name,
 			characterDescription: character.description || characterData.description || '',
-			scenario: characterData.scenario || '',
-			userName: userInfo.name
+			scenario: conversation.scenario || characterData.scenario || '',
+			userName: userInfo.name,
+			chatHistory
 		});
 
 		// Save to database

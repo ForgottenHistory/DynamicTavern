@@ -6,7 +6,7 @@
 	import ChatInput from '$lib/components/chat/ChatInput.svelte';
 	import ChatCharacterImage from '$lib/components/chat/ChatCharacterImage.svelte';
 	import ChatBranchPanel from '$lib/components/chat/ChatBranchPanel.svelte';
-	// import ChatClothesPanel from '$lib/components/chat/ChatClothesPanel.svelte'; // Legacy feature - disabled
+	import ChatWorldPanel from '$lib/components/chat/ChatWorldPanel.svelte';
 	import ImageGenerateModal from '$lib/components/chat/ImageGenerateModal.svelte';
 	import PostHistoryModal from '$lib/components/chat/PostHistoryModal.svelte';
 	import ScenarioSelector from '$lib/components/chat/ScenarioSelector.svelte';
@@ -137,15 +137,16 @@
 					/>
 				</div>
 
-				<!-- Right: World Panel (full height) - Legacy feature disabled -->
-				<!-- <ChatClothesPanel
-					characterName={state.character?.name ?? 'Character'}
-					userName={state.userName || data.user?.displayName || 'User'}
-					clothes={state.clothes}
-					loading={state.clothesLoading}
-					onRegenerate={state.generateClothes}
-					onLookAtItem={(owner, itemName, itemDescription) => state.handleSceneAction('look_item', { owner, itemName, itemDescription })}
-				/> -->
+				<!-- Right: World Panel (full height) -->
+				{#if state.worldSidebarEnabled}
+					<ChatWorldPanel
+						characterName={state.character?.name ?? 'Character'}
+						worldState={state.worldState}
+						loading={state.worldStateLoading}
+						onRegenerate={state.generateWorldState}
+						onLookAtItem={(owner, itemName, itemDescription) => state.handleSceneAction('look_item', { owner, itemName, itemDescription })}
+					/>
+				{/if}
 			</div>
 		{/if}
 	</div>

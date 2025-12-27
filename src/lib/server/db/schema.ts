@@ -17,6 +17,8 @@ export const users = sqliteTable('users', {
 	randomNarrationEnabled: integer('random_narration_enabled', { mode: 'boolean' }).notNull().default(false),
 	randomNarrationMinMessages: integer('random_narration_min_messages').notNull().default(3),
 	randomNarrationMaxMessages: integer('random_narration_max_messages').notNull().default(8),
+	// World sidebar
+	worldSidebarEnabled: integer('world_sidebar_enabled', { mode: 'boolean' }).notNull().default(false),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.$defaultFn(() => new Date())

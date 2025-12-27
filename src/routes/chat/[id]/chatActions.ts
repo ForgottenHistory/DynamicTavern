@@ -44,6 +44,7 @@ export async function loadSettings(): Promise<{
 	randomNarrationEnabled: boolean;
 	randomNarrationMinMessages: number;
 	randomNarrationMaxMessages: number;
+	worldSidebarEnabled: boolean;
 	userAvatar: string | null;
 	userName: string | null;
 }> {
@@ -59,6 +60,7 @@ export async function loadSettings(): Promise<{
 				randomNarrationEnabled: result.randomNarrationEnabled ?? false,
 				randomNarrationMinMessages: result.randomNarrationMinMessages ?? 3,
 				randomNarrationMaxMessages: result.randomNarrationMaxMessages ?? 8,
+				worldSidebarEnabled: result.worldSidebarEnabled ?? false,
 				userAvatar: result.userAvatar || null,
 				userName: result.userName || null
 			};
@@ -74,6 +76,7 @@ export async function loadSettings(): Promise<{
 		randomNarrationEnabled: false,
 		randomNarrationMinMessages: 3,
 		randomNarrationMaxMessages: 8,
+		worldSidebarEnabled: false,
 		userAvatar: null,
 		userName: null
 	};
@@ -362,18 +365,32 @@ export async function triggerSceneAction(
 	}
 }
 
-// Clothes generation
+// World state generation
 export interface ClothingItem {
 	name: string;
 	description: string;
 }
 
-export interface ClothesData {
-	character: ClothingItem[];
-	user: ClothingItem[];
+export interface CharacterState {
+	clothes: ClothingItem[];
+	mood: string;
+	position: string;
 }
 
-export async function generateClothes(characterId: number): Promise<ClothesData | null> {
+export interface UserState {
+	clothes: ClothingItem[];
+	position: string;
+}
+
+export interface WorldStateData {
+	character: CharacterState;
+	user: UserState;
+}
+
+// Backwards compatibility alias
+export type ClothesData = WorldStateData;
+
+export async function generateWorldState(characterId: number): Promise<WorldStateData | null> {
 	try {
 		const response = await fetch(`/api/chat/${characterId}/clothes`, {
 			method: 'POST'
@@ -383,27 +400,31 @@ export async function generateClothes(characterId: number): Promise<ClothesData 
 		}
 		return null;
 	} catch (error) {
-		console.error('Failed to generate clothes:', error);
+		console.error('Failed to generate world state:', error);
 		return null;
 	}
 }
 
-export async function getClothes(characterId: number): Promise<ClothesData | null> {
+export async function getWorldState(characterId: number): Promise<WorldStateData | null> {
 	try {
 		const response = await fetch(`/api/chat/${characterId}/clothes`);
 		if (response.ok) {
 			const data = await response.json();
-			// Check if it's valid clothes data (not an error response)
+			// Check if it's valid world state data (not an error response)
 			if (data && data.character && data.user) {
 				return data;
 			}
 		}
 		return null;
 	} catch (error) {
-		console.error('Failed to get clothes:', error);
+		console.error('Failed to get world state:', error);
 		return null;
 	}
 }
+
+// Backwards compatibility aliases
+export const generateClothes = generateWorldState;
+export const getClothes = getWorldState;
 
 // Utility functions for swipes
 export function getSwipes(message: Message): string[] {

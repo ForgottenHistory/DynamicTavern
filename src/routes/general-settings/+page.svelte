@@ -13,6 +13,7 @@
 	let randomNarrationEnabled = $state(false);
 	let randomNarrationMinMessages = $state(3);
 	let randomNarrationMaxMessages = $state(8);
+	let worldSidebarEnabled = $state(false);
 	let writingStyle = $state('');
 	let loading = $state(true);
 
@@ -37,6 +38,7 @@
 				randomNarrationEnabled = data.randomNarrationEnabled ?? false;
 				randomNarrationMinMessages = data.randomNarrationMinMessages ?? 3;
 				randomNarrationMaxMessages = data.randomNarrationMaxMessages ?? 8;
+				worldSidebarEnabled = data.worldSidebarEnabled ?? false;
 			}
 
 			if (writingStyleRes.ok) {
@@ -59,7 +61,7 @@
 				fetch('/api/settings', {
 					method: 'PUT',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages })
+					body: JSON.stringify({ chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages, worldSidebarEnabled })
 				}),
 				fetch('/api/writing-style', {
 					method: 'PUT',
@@ -71,7 +73,7 @@
 			if (settingsRes.ok && writingStyleRes.ok) {
 				message = { type: 'success', text: 'Settings saved successfully!' };
 				// Dispatch event so chat components can react
-				window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages } }));
+				window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages, worldSidebarEnabled } }));
 			} else {
 				const data = await settingsRes.json();
 				message = { type: 'error', text: data.error || 'Failed to save settings' };
@@ -411,6 +413,35 @@
 									</div>
 								{/if}
 							</div>
+						</div>
+
+						<!-- World Sidebar Section -->
+						<div>
+							<h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">World Sidebar</h2>
+							<p class="text-sm text-[var(--text-muted)] mb-4">
+								Show a sidebar panel with world state information during chat
+							</p>
+
+							<label class="flex items-center justify-between p-4 rounded-xl border border-[var(--border-primary)] hover:border-[var(--border-secondary)] transition cursor-pointer">
+								<div>
+									<p class="font-medium text-[var(--text-primary)]">Enable World Sidebar</p>
+									<p class="text-sm text-[var(--text-muted)] mt-1">
+										Display a collapsible panel with clothing, items, and other world state
+									</p>
+								</div>
+								<button
+									type="button"
+									role="switch"
+									aria-checked={worldSidebarEnabled}
+									aria-label="Toggle world sidebar"
+									onclick={() => worldSidebarEnabled = !worldSidebarEnabled}
+									class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {worldSidebarEnabled ? 'bg-[var(--accent-primary)]' : 'bg-[var(--bg-tertiary)]'}"
+								>
+									<span
+										class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {worldSidebarEnabled ? 'translate-x-6' : 'translate-x-1'}"
+									></span>
+								</button>
+							</label>
 						</div>
 
 						<!-- Writing Style Section -->

@@ -14,11 +14,11 @@ import {
 	createMessageActions,
 	createBranchActions,
 	createImageActions,
-	createClothesActions,
+	createWorldActions,
 	type Branch
 } from './state';
 
-export type { SceneActionType, ImpersonateStyle, ClothesData } from './chatActions';
+export type { SceneActionType, ImpersonateStyle, WorldStateData, ClothesData } from './chatActions';
 export type { Branch } from './state';
 
 export interface ChatStateOptions {
@@ -68,9 +68,10 @@ export function createChatState(options: ChatStateOptions) {
 	let showBranchPanel = $state(false);
 	let creatingBranch = $state(false);
 
-	// Clothes state
-	let clothes = $state<api.ClothesData | null>(null);
-	let clothesLoading = $state(false);
+	// World state
+	let worldState = $state<api.WorldStateData | null>(null);
+	let worldStateLoading = $state(false);
+	let worldSidebarEnabled = $state(false);
 
 	// Image generation modal state
 	let generatingImage = $state(false);
@@ -155,11 +156,11 @@ export function createChatState(options: ChatStateOptions) {
 		}
 	);
 
-	const clothesActions = createClothesActions(
-		() => ({ clothes, clothesLoading }),
+	const worldActions = createWorldActions(
+		() => ({ worldState, worldStateLoading }),
 		(updates) => {
-			if (updates.clothes !== undefined) clothes = updates.clothes;
-			if (updates.clothesLoading !== undefined) clothesLoading = updates.clothesLoading;
+			if (updates.worldState !== undefined) worldState = updates.worldState;
+			if (updates.worldStateLoading !== undefined) worldStateLoading = updates.worldStateLoading;
 		},
 		{
 			characterId: options.characterId
@@ -181,6 +182,7 @@ export function createChatState(options: ChatStateOptions) {
 		randomNarrationEnabled = settings.randomNarrationEnabled;
 		randomNarrationMinMessages = settings.randomNarrationMinMessages;
 		randomNarrationMaxMessages = settings.randomNarrationMaxMessages;
+		worldSidebarEnabled = settings.worldSidebarEnabled;
 		userAvatar = settings.userAvatar;
 		userName = settings.userName;
 
@@ -190,7 +192,7 @@ export function createChatState(options: ChatStateOptions) {
 		}
 	}
 
-	function handleSettingsUpdate(e: CustomEvent<{ chatLayout: 'bubbles' | 'discord'; avatarStyle: 'circle' | 'rounded'; textCleanupEnabled: boolean; autoWrapActions: boolean; randomNarrationEnabled?: boolean; randomNarrationMinMessages?: number; randomNarrationMaxMessages?: number }>) {
+	function handleSettingsUpdate(e: CustomEvent<{ chatLayout: 'bubbles' | 'discord'; avatarStyle: 'circle' | 'rounded'; textCleanupEnabled: boolean; autoWrapActions: boolean; randomNarrationEnabled?: boolean; randomNarrationMinMessages?: number; randomNarrationMaxMessages?: number; worldSidebarEnabled?: boolean }>) {
 		chatLayout = e.detail.chatLayout;
 		if (e.detail.avatarStyle) avatarStyle = e.detail.avatarStyle;
 		if (typeof e.detail.textCleanupEnabled === 'boolean') textCleanupEnabled = e.detail.textCleanupEnabled;
@@ -204,6 +206,7 @@ export function createChatState(options: ChatStateOptions) {
 		}
 		if (typeof e.detail.randomNarrationMinMessages === 'number') randomNarrationMinMessages = e.detail.randomNarrationMinMessages;
 		if (typeof e.detail.randomNarrationMaxMessages === 'number') randomNarrationMaxMessages = e.detail.randomNarrationMaxMessages;
+		if (typeof e.detail.worldSidebarEnabled === 'boolean') worldSidebarEnabled = e.detail.worldSidebarEnabled;
 	}
 
 	// Character and conversation loading
@@ -474,8 +477,9 @@ export function createChatState(options: ChatStateOptions) {
 		get activeBranchId() { return activeBranchId; },
 		get showBranchPanel() { return showBranchPanel; },
 		set showBranchPanel(value: boolean) { showBranchPanel = value; },
-		get clothes() { return clothes; },
-		get clothesLoading() { return clothesLoading; },
+		get worldState() { return worldState; },
+		get worldStateLoading() { return worldStateLoading; },
+		get worldSidebarEnabled() { return worldSidebarEnabled; },
 		get showImageModal() { return showImageModal; },
 		set showImageModal(value: boolean) { showImageModal = value; },
 		get imageModalLoading() { return imageModalLoading; },
@@ -504,7 +508,7 @@ export function createChatState(options: ChatStateOptions) {
 		...messageActions,
 		...branchActions,
 		...imageActions,
-		generateClothes: clothesActions.generateClothes,
+		generateWorldState: worldActions.generateWorldState,
 
 		// Post history actions
 		openPostHistoryModal,

@@ -7,7 +7,25 @@ export interface ClothingItem {
 	description: string;
 }
 
+export interface CharacterState {
+	clothes: ClothingItem[];
+	mood: string;
+	position: string;
+}
+
+export interface UserState {
+	clothes: ClothingItem[];
+	position: string;
+}
+
+export interface WorldStateData {
+	character: CharacterState;
+	user: UserState;
+}
+
 export interface WorldInfo {
+	worldState?: WorldStateData;
+	// Legacy: keep for backwards compatibility during migration
 	clothes?: {
 		character: ClothingItem[];
 		user: ClothingItem[];
@@ -45,26 +63,58 @@ class WorldInfoService {
 	}
 
 	/**
-	 * Update clothes in world info
+	 * Update world state (clothes, mood, position)
 	 */
-	async updateClothes(
-		conversationId: number,
-		clothes: { character: ClothingItem[]; user: ClothingItem[] }
-	): Promise<void> {
+	async updateWorldState(conversationId: number, worldState: WorldStateData): Promise<void> {
 		const existing = await this.getWorldInfo(conversationId);
 		const updated: WorldInfo = {
 			...existing,
-			clothes
+			worldState
 		};
 		await this.saveWorldInfo(conversationId, updated);
 	}
 
 	/**
-	 * Get clothes from world info
+	 * Backwards compatible: Update clothes (accepts new WorldStateData)
 	 */
-	async getClothes(conversationId: number): Promise<{ character: ClothingItem[]; user: ClothingItem[] } | null> {
+	async updateClothes(conversationId: number, worldState: WorldStateData): Promise<void> {
+		return this.updateWorldState(conversationId, worldState);
+	}
+
+	/**
+	 * Get world state (clothes, mood, position)
+	 */
+	async getWorldState(conversationId: number): Promise<WorldStateData | null> {
 		const worldInfo = await this.getWorldInfo(conversationId);
-		return worldInfo?.clothes || null;
+
+		// Return new format if available
+		if (worldInfo?.worldState) {
+			return worldInfo.worldState;
+		}
+
+		// Migrate legacy format
+		if (worldInfo?.clothes) {
+			return {
+				character: {
+					clothes: worldInfo.clothes.character || [],
+					mood: '',
+					position: ''
+				},
+				user: {
+					clothes: worldInfo.clothes.user || [],
+					position: ''
+				}
+			};
+		}
+
+		return null;
+	}
+
+	/**
+	 * Backwards compatible: Get clothes
+	 */
+	async getClothes(conversationId: number): Promise<WorldStateData | null> {
+		return this.getWorldState(conversationId);
 	}
 
 	/**
@@ -77,25 +127,39 @@ class WorldInfoService {
 		const userLabel = userName || 'User';
 		const parts: string[] = [];
 
-		if (worldInfo.clothes) {
-			const clothesParts: string[] = [];
-
-			if (worldInfo.clothes.character.length > 0) {
-				const charClothes = worldInfo.clothes.character
+		const worldState = worldInfo.worldState;
+		if (worldState) {
+			// Character section
+			const charParts: string[] = [];
+			if (worldState.character.mood) {
+				charParts.push(`Mood: ${worldState.character.mood}`);
+			}
+			if (worldState.character.position) {
+				charParts.push(`Position: ${worldState.character.position}`);
+			}
+			if (worldState.character.clothes.length > 0) {
+				const clothes = worldState.character.clothes
 					.map(item => `  ${item.name}: ${item.description}`)
 					.join('\n');
-				clothesParts.push(`${charLabel}'s clothing:\n${charClothes}`);
+				charParts.push(`Clothing:\n${clothes}`);
+			}
+			if (charParts.length > 0) {
+				parts.push(`${charLabel}:\n${charParts.join('\n')}`);
 			}
 
-			if (worldInfo.clothes.user.length > 0) {
-				const userClothes = worldInfo.clothes.user
+			// User section
+			const userParts: string[] = [];
+			if (worldState.user.position) {
+				userParts.push(`Position: ${worldState.user.position}`);
+			}
+			if (worldState.user.clothes.length > 0) {
+				const clothes = worldState.user.clothes
 					.map(item => `  ${item.name}: ${item.description}`)
 					.join('\n');
-				clothesParts.push(`${userLabel}'s clothing:\n${userClothes}`);
+				userParts.push(`Clothing:\n${clothes}`);
 			}
-
-			if (clothesParts.length > 0) {
-				parts.push(clothesParts.join('\n\n'));
+			if (userParts.length > 0) {
+				parts.push(`${userLabel}:\n${userParts.join('\n')}`);
 			}
 		}
 
@@ -103,26 +167,77 @@ class WorldInfoService {
 	}
 
 	/**
-	 * Format only character clothes for prompt injection
+	 * Format only character state for prompt injection
 	 */
-	formatCharacterClothesForPrompt(worldInfo: WorldInfo | null, characterName?: string): string {
-		if (!worldInfo?.clothes?.character?.length) return '';
+	formatCharacterStateForPrompt(worldInfo: WorldInfo | null, characterName?: string): string {
+		const worldState = worldInfo?.worldState;
+		if (!worldState?.character) return '';
 
 		const charLabel = characterName || 'Character';
-		const charClothes = worldInfo.clothes.character
+		const parts: string[] = [];
+
+		if (worldState.character.mood) {
+			parts.push(`Mood: ${worldState.character.mood}`);
+		}
+		if (worldState.character.position) {
+			parts.push(`Position: ${worldState.character.position}`);
+		}
+		if (worldState.character.clothes.length > 0) {
+			const clothes = worldState.character.clothes
+				.map(item => `  ${item.name}: ${item.description}`)
+				.join('\n');
+			parts.push(`Clothing:\n${clothes}`);
+		}
+
+		return parts.length > 0 ? `${charLabel}:\n${parts.join('\n')}` : '';
+	}
+
+	/**
+	 * Format only character clothes for prompt injection (backwards compat)
+	 */
+	formatCharacterClothesForPrompt(worldInfo: WorldInfo | null, characterName?: string): string {
+		const worldState = worldInfo?.worldState;
+		if (!worldState?.character?.clothes?.length) return '';
+
+		const charLabel = characterName || 'Character';
+		const charClothes = worldState.character.clothes
 			.map(item => `  ${item.name}: ${item.description}`)
 			.join('\n');
 		return `${charLabel}'s clothing:\n${charClothes}`;
 	}
 
 	/**
-	 * Format only user clothes for prompt injection
+	 * Format only user state for prompt injection
 	 */
-	formatUserClothesForPrompt(worldInfo: WorldInfo | null, userName?: string): string {
-		if (!worldInfo?.clothes?.user?.length) return '';
+	formatUserStateForPrompt(worldInfo: WorldInfo | null, userName?: string): string {
+		const worldState = worldInfo?.worldState;
+		if (!worldState?.user) return '';
 
 		const userLabel = userName || 'User';
-		const userClothes = worldInfo.clothes.user
+		const parts: string[] = [];
+
+		if (worldState.user.position) {
+			parts.push(`Position: ${worldState.user.position}`);
+		}
+		if (worldState.user.clothes.length > 0) {
+			const clothes = worldState.user.clothes
+				.map(item => `  ${item.name}: ${item.description}`)
+				.join('\n');
+			parts.push(`Clothing:\n${clothes}`);
+		}
+
+		return parts.length > 0 ? `${userLabel}:\n${parts.join('\n')}` : '';
+	}
+
+	/**
+	 * Format only user clothes for prompt injection (backwards compat)
+	 */
+	formatUserClothesForPrompt(worldInfo: WorldInfo | null, userName?: string): string {
+		const worldState = worldInfo?.worldState;
+		if (!worldState?.user?.clothes?.length) return '';
+
+		const userLabel = userName || 'User';
+		const userClothes = worldState.user.clothes
 			.map(item => `  ${item.name}: ${item.description}`)
 			.join('\n');
 		return `${userLabel}'s clothing:\n${userClothes}`;

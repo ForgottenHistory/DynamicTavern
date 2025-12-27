@@ -7,21 +7,31 @@
 		description: string;
 	}
 
-	interface ClothesData {
-		character: ClothingItem[];
-		user: ClothingItem[];
+	interface CharacterState {
+		clothes: ClothingItem[];
+		mood: string;
+		position: string;
+	}
+
+	interface UserState {
+		clothes: ClothingItem[];
+		position: string;
+	}
+
+	interface WorldStateData {
+		character: CharacterState;
+		user: UserState;
 	}
 
 	interface Props {
 		characterName: string;
-		userName: string;
-		clothes: ClothesData | null;
+		worldState: WorldStateData | null;
 		loading: boolean;
 		onRegenerate: () => void;
 		onLookAtItem: (owner: string, itemName: string, itemDescription: string) => void;
 	}
 
-	let { characterName, userName, clothes, loading, onRegenerate, onLookAtItem }: Props = $props();
+	let { characterName, worldState, loading, onRegenerate, onLookAtItem }: Props = $props();
 
 	let collapsed = $state(browser ? localStorage.getItem('worldPanelCollapsed') === 'true' : false);
 	let expandedSections = $state<Set<'character' | 'user'>>(new Set(['character']));
@@ -109,7 +119,7 @@
 				<div class="animate-spin rounded-full h-6 w-6 border-2 border-[var(--accent-primary)] border-t-transparent"></div>
 				<span class="ml-2 text-sm text-[var(--text-muted)]">Generating...</span>
 			</div>
-		{:else if clothes}
+		{:else if worldState}
 			<!-- Character Section -->
 			<button
 				onclick={() => toggleSection('character')}
@@ -127,8 +137,44 @@
 			</button>
 			{#if isSectionExpanded('character')}
 				<div class="py-1" transition:slide={{ duration: 200 }}>
-					{#if clothes.character.length > 0}
-						{#each clothes.character as item, i}
+					<!-- Mood -->
+					{#if worldState.character.mood}
+						<div class="px-3 py-2 flex items-start gap-2">
+							<svg class="w-4 h-4 text-[var(--warning)] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+							</svg>
+							<div>
+								<span class="text-xs text-[var(--text-muted)] uppercase tracking-wide">Mood</span>
+								<p class="text-sm text-[var(--text-secondary)]">{worldState.character.mood}</p>
+							</div>
+						</div>
+					{/if}
+
+					<!-- Position -->
+					{#if worldState.character.position}
+						<div class="px-3 py-2 flex items-start gap-2">
+							<svg class="w-4 h-4 text-[var(--accent-primary)] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+							</svg>
+							<div>
+								<span class="text-xs text-[var(--text-muted)] uppercase tracking-wide">Position</span>
+								<p class="text-sm text-[var(--text-secondary)]">{worldState.character.position}</p>
+							</div>
+						</div>
+					{/if}
+
+					<!-- Clothes -->
+					{#if worldState.character.clothes && worldState.character.clothes.length > 0}
+						<div class="px-3 py-2">
+							<span class="text-xs text-[var(--text-muted)] uppercase tracking-wide flex items-center gap-2">
+								<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+								</svg>
+								Clothes
+							</span>
+						</div>
+						{#each worldState.character.clothes as item, i}
 							<div class="flex items-center px-3 py-1.5 hover:bg-[var(--bg-tertiary)] transition">
 								<button
 									onclick={() => toggleItem('character', i)}
@@ -162,60 +208,15 @@
 				</div>
 			{/if}
 
-			<!-- User Section -->
-			<button
-				onclick={() => toggleSection('user')}
-				class="w-full flex items-center justify-between p-3 hover:bg-[var(--bg-tertiary)] transition border-b border-[var(--border-primary)]"
-			>
-				<div class="flex items-center gap-2">
-					<svg class="w-4 h-4 text-[var(--accent-user)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-					</svg>
-					<span class="text-sm font-medium text-[var(--accent-user)]">{userName}</span>
-				</div>
-				<svg class="w-4 h-4 text-[var(--text-muted)] transition-transform duration-200 {isSectionExpanded('user') ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-				</svg>
-			</button>
-			{#if isSectionExpanded('user')}
-				<div class="py-1" transition:slide={{ duration: 200 }}>
-					{#if clothes.user.length > 0}
-						{#each clothes.user as item, i}
-							<div class="flex items-center px-3 py-1.5 hover:bg-[var(--bg-tertiary)] transition">
-								<button
-									onclick={() => toggleItem('user', i)}
-									class="flex-1 text-left flex items-center gap-2"
-								>
-									<svg class="w-3 h-3 text-[var(--text-muted)] transition-transform duration-200 flex-shrink-0 {isItemExpanded('user', i) ? 'rotate-90' : ''}" fill="currentColor" viewBox="0 0 20 20">
-										<path d="M6 6L14 10L6 14V6Z"/>
-									</svg>
-									<span class="text-sm text-[var(--text-secondary)]">{item.name}</span>
-								</button>
-								<button
-									onclick={() => onLookAtItem(userName, item.name, item.description)}
-									class="p-1 hover:bg-[var(--border-primary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] rounded transition"
-									title="Look at {item.name}"
-								>
-									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-									</svg>
-								</button>
-							</div>
-							{#if isItemExpanded('user', i)}
-								<div class="px-3 pb-2 pl-8" transition:slide={{ duration: 150 }}>
-									<p class="text-sm text-[var(--text-muted)]">{item.description}</p>
-								</div>
-							{/if}
-						{/each}
-					{:else}
-						<p class="text-sm text-[var(--text-muted)] italic px-3 py-2">No clothing data</p>
-					{/if}
-				</div>
-			{/if}
 		{:else}
 			<div class="text-center py-8">
 				<p class="text-sm text-[var(--text-muted)]">No data</p>
+				<button
+					onclick={onRegenerate}
+					class="mt-2 text-sm text-[var(--accent-primary)] hover:underline"
+				>
+					Generate world state
+				</button>
 			</div>
 		{/if}
 	</div>
