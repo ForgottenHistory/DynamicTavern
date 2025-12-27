@@ -74,3 +74,63 @@ body {
 	background-color: var(--bg-primary);
 	color: var(--text-primary);
 }
+
+/* Button styles */
+.btn-primary {
+	background-color: color-mix(in srgb, var(--accent-primary) 20%, transparent);
+	border: 1px solid color-mix(in srgb, var(--accent-primary) 40%, transparent);
+	color: var(--accent-primary);
+	font-weight: 500;
+	border-radius: 0.75rem;
+	transition: all 0.2s;
+}
+
+.btn-primary:hover {
+	background-color: color-mix(in srgb, var(--accent-primary) 30%, transparent);
+	border-color: color-mix(in srgb, var(--accent-primary) 60%, transparent);
+}
+
+.btn-primary:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* Solid primary button - for important actions */
+.btn-primary-solid {
+	background: linear-gradient(to right, color-mix(in srgb, var(--accent-primary) 60%, black), color-mix(in srgb, var(--accent-secondary) 60%, black));
+	color: white;
+	font-weight: 500;
+	border-radius: 0.75rem;
+	border: none;
+	transition: all 0.2s;
+}
+
+.btn-primary-solid:hover {
+	opacity: 0.9;
+}
+
+.btn-primary-solid:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* Secondary button - for cancel/secondary actions */
+.btn-secondary {
+	background-color: var(--bg-tertiary);
+	border: 1px solid var(--border-primary);
+	color: var(--text-secondary);
+	font-weight: 500;
+	border-radius: 0.75rem;
+	transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+	background-color: var(--bg-elevated);
+	border-color: var(--border-secondary);
+	color: var(--text-primary);
+}
+
+.btn-secondary:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}

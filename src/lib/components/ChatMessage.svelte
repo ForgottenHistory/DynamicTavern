@@ -256,6 +256,19 @@
 			return result;
 		};
 
+		// Helper to process asterisks in action content (bold emphasis within italic actions)
+		const processAsterisksInAction = (content: string): string => {
+			let result = content;
+			let prev = '';
+			while (prev !== result) {
+				prev = result;
+				result = result.replace(/\*([^*]+)\*/g, (m, c) => {
+					return `<span class="rp-action-emphasis">${c.trim()}</span>`;
+				});
+			}
+			return result;
+		};
+
 		processed = processed.replace(/\*\*"([^"]+)"\*\*/g, (match, content) => {
 			boldDialogues.push(processAsterisksInDialogue(content));
 			return `%%BOLD_DIALOGUE_${boldDialogues.length - 1}%%`;
@@ -275,14 +288,22 @@
 		});
 
 		// Step 3: Process single asterisks for actions (outside of dialogue)
-		// Use non-greedy match to handle nested cases better
-		processed = processed.replace(/\*(.+?)\*/g, (match, content) => {
-			// Skip if it looks like it's part of a double asterisk that wasn't caught
-			if (content.startsWith('*') || content.endsWith('*')) {
-				return match;
+		// Handle action blocks that may contain inner *emphasis* asterisks
+		// Process line by line to handle full-line action blocks correctly
+		processed = processed.split('\n').map(line => {
+			// Check if line starts and ends with asterisks (full action block with possible inner emphasis)
+			const fullActionMatch = line.match(/^\*(.+)\*$/);
+			if (fullActionMatch) {
+				const content = fullActionMatch[1];
+				// Process any inner asterisks as emphasis
+				const processedContent = processAsterisksInAction(content);
+				return `%%ACTION_START%%${processedContent}%%ACTION_END%%`;
 			}
-			return `%%ACTION_START%%${content.trim()}%%ACTION_END%%`;
-		});
+			// For inline actions without inner emphasis, use simple matching
+			return line.replace(/\*([^*]+)\*/g, (match, content) => {
+				return `%%ACTION_START%%${content}%%ACTION_END%%`;
+			});
+		}).join('\n');
 
 		// Configure marked for safe rendering
 		marked.setOptions({
@@ -387,6 +408,12 @@
 	.chat-message :global(.rp-dialogue-emphasis) {
 		color: var(--accent-hover);
 		font-weight: 600;
+	}
+
+	.chat-message :global(.rp-action-emphasis) {
+		color: var(--text-secondary);
+		font-weight: 600;
+		font-style: italic;
 	}
 
 	.chat-message :global(.rp-char-name) {

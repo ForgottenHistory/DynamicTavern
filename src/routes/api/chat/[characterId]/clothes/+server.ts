@@ -25,7 +25,7 @@ export const GET: RequestHandler = async ({ params, cookies, url }) => {
 			.from(conversations)
 			.where(
 				and(
-					eq(conversations.characterId, characterId),
+					eq(conversations.primaryCharacterId, characterId),
 					eq(conversations.userId, parseInt(userId)),
 					eq(conversations.isActive, true)
 				)
@@ -74,7 +74,7 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 			.from(conversations)
 			.where(
 				and(
-					eq(conversations.characterId, characterId),
+					eq(conversations.primaryCharacterId, characterId),
 					eq(conversations.userId, parseInt(userId)),
 					eq(conversations.isActive, true)
 				)

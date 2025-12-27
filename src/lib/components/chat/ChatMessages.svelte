@@ -37,7 +37,7 @@
 	}
 </script>
 
-<div class="flex-1 overflow-y-auto px-6 py-6" bind:this={container}>
+<div class="flex-1 overflow-y-auto pl-6 pr-24 py-6" bind:this={container}>
 	{#if loading}
 		<div class="flex items-center justify-center h-full">
 			<div class="text-[var(--text-muted)]">Loading conversation...</div>
@@ -50,7 +50,7 @@
 			</div>
 		</div>
 	{:else}
-		<div class="{chatLayout === 'discord' ? 'space-y-1' : 'space-y-4'}">
+		<div class="{chatLayout === 'discord' ? 'space-y-3' : 'space-y-4'}">
 			{#each messages as message, index (message.id)}
 				{#if chatLayout === 'discord'}
 					<MessageRow

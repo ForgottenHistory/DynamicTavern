@@ -25,7 +25,7 @@ export const PUT: RequestHandler = async ({ params, cookies }) => {
 				and(
 					eq(conversations.id, branchId),
 					eq(conversations.userId, parseInt(userId)),
-					eq(conversations.characterId, characterId)
+					eq(conversations.primaryCharacterId, characterId)
 				)
 			)
 			.limit(1);
@@ -41,7 +41,7 @@ export const PUT: RequestHandler = async ({ params, cookies }) => {
 			.where(
 				and(
 					eq(conversations.userId, parseInt(userId)),
-					eq(conversations.characterId, characterId)
+					eq(conversations.primaryCharacterId, characterId)
 				)
 			);
 
@@ -82,7 +82,7 @@ export const PATCH: RequestHandler = async ({ params, request, cookies }) => {
 				and(
 					eq(conversations.id, branchId),
 					eq(conversations.userId, parseInt(userId)),
-					eq(conversations.characterId, characterId)
+					eq(conversations.primaryCharacterId, characterId)
 				)
 			)
 			.returning();
@@ -119,7 +119,7 @@ export const DELETE: RequestHandler = async ({ params, cookies }) => {
 			.where(
 				and(
 					eq(conversations.userId, parseInt(userId)),
-					eq(conversations.characterId, characterId)
+					eq(conversations.primaryCharacterId, characterId)
 				)
 			);
 
@@ -135,7 +135,7 @@ export const DELETE: RequestHandler = async ({ params, cookies }) => {
 				and(
 					eq(conversations.id, branchId),
 					eq(conversations.userId, parseInt(userId)),
-					eq(conversations.characterId, characterId)
+					eq(conversations.primaryCharacterId, characterId)
 				)
 			)
 			.limit(1);
@@ -155,7 +155,7 @@ export const DELETE: RequestHandler = async ({ params, cookies }) => {
 				.where(
 					and(
 						eq(conversations.userId, parseInt(userId)),
-						eq(conversations.characterId, characterId)
+						eq(conversations.primaryCharacterId, characterId)
 					)
 				)
 				.limit(1);

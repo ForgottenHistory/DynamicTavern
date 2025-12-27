@@ -22,7 +22,7 @@ export const GET: RequestHandler = async ({ params, cookies }) => {
 			.where(
 				and(
 					eq(conversations.userId, parseInt(userId)),
-					eq(conversations.characterId, characterId)
+					eq(conversations.primaryCharacterId, characterId)
 				)
 			)
 			.orderBy(desc(conversations.createdAt));
@@ -101,7 +101,7 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 			.where(
 				and(
 					eq(conversations.userId, parseInt(userId)),
-					eq(conversations.characterId, characterId)
+					eq(conversations.primaryCharacterId, characterId)
 				)
 			);
 
@@ -110,7 +110,8 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 			.insert(conversations)
 			.values({
 				userId: parseInt(userId),
-				characterId,
+				characterId, // Legacy field
+				primaryCharacterId: characterId,
 				name: name || `Branch from message ${messageId}`,
 				parentConversationId: parentConversation.id,
 				branchPointMessageId: messageId,

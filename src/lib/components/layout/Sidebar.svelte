@@ -84,7 +84,7 @@
 			<!-- Start Chat Button -->
 			<a
 				href="/chat"
-				class="w-full mb-4 px-4 py-3 rounded-xl bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-white font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg"
+				class="btn-primary w-full mb-4 px-4 py-3 flex items-center justify-center gap-2"
 			>
 				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
