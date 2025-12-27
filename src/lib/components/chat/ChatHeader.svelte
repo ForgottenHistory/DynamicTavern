@@ -9,9 +9,10 @@
 		onReset: () => void;
 		onToggleBranches?: () => void;
 		onPostHistory?: () => void;
+		onDelete?: () => void;
 	}
 
-	let { character, conversationId, branchCount = 0, onReset, onToggleBranches, onPostHistory }: Props = $props();
+	let { character, conversationId, branchCount = 0, onReset, onToggleBranches, onPostHistory, onDelete }: Props = $props();
 
 	// Load collapsed state from localStorage
 	let collapsed = $state(browser ? localStorage.getItem('chatHeaderCollapsed') !== 'false' : true);
@@ -258,5 +259,25 @@
 			</svg>
 			Reset Conversation
 		</button>
+		{#if onDelete}
+			<div class="border-t border-[var(--border-primary)] my-1"></div>
+			<button
+				onclick={() => {
+					showMenu = false;
+					onDelete();
+				}}
+				class="w-full text-left px-4 py-2.5 text-[var(--error)] hover:bg-[var(--error)]/10 transition-all font-medium flex items-center gap-2"
+			>
+				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+					/>
+				</svg>
+				Delete Chat
+			</button>
+		{/if}
 	</div>
 {/if}

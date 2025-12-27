@@ -70,6 +70,7 @@
 				onReset={state.resetConversation}
 				onToggleBranches={() => state.showBranchPanel = !state.showBranchPanel}
 				onPostHistory={state.openPostHistoryModal}
+				onDelete={state.deleteConversation}
 			/>
 
 			<!-- Main content area with World sidebar -->

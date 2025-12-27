@@ -1,5 +1,6 @@
 import type { Character, Message } from '$lib/server/db/schema';
 import { browser } from '$app/environment';
+import { goto } from '$app/navigation';
 import {
 	initSocket,
 	joinConversation,
@@ -245,6 +246,11 @@ export function createChatState(options: ChatStateOptions) {
 		joinConversation(newConversationId);
 		await loadConversation();
 
+		// Notify sidebar to refresh conversations list
+		if (browser) {
+			window.dispatchEvent(new CustomEvent('conversationUpdated'));
+		}
+
 		// Generate clothes when conversation starts - Legacy feature disabled
 		// clothesActions.generateClothes();
 	}
@@ -261,6 +267,37 @@ export function createChatState(options: ChatStateOptions) {
 			await loadConversation();
 		} else {
 			alert('Failed to reset conversation');
+		}
+	}
+
+	// Delete conversation completely
+	async function deleteConversation() {
+		if (!conversationId) return;
+
+		const confirmed = confirm('Are you sure you want to delete this chat? This action cannot be undone.');
+		if (!confirmed) return;
+
+		try {
+			const response = await fetch(`/api/conversations/${conversationId}`, {
+				method: 'DELETE'
+			});
+
+			if (response.ok) {
+				// Leave the socket room
+				leaveConversation(conversationId);
+				// Notify sidebar to refresh
+				if (browser) {
+					window.dispatchEvent(new CustomEvent('conversationUpdated'));
+				}
+				// Navigate back to home
+				goto('/');
+			} else {
+				const data = await response.json();
+				alert(data.error || 'Failed to delete chat');
+			}
+		} catch (error) {
+			console.error('Failed to delete chat:', error);
+			alert('Failed to delete chat');
 		}
 	}
 
@@ -386,6 +423,7 @@ export function createChatState(options: ChatStateOptions) {
 		handleCharacterChange,
 		handleScenarioStart,
 		resetConversation,
+		deleteConversation,
 		setupSocket,
 		cleanup,
 		handleKeydown,
