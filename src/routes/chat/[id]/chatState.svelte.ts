@@ -280,6 +280,17 @@ export function createChatState(options: ChatStateOptions) {
 				await loadSceneCharacters();
 				// Load saved world state for existing conversation
 				worldActions.loadWorldState();
+
+				// Auto-generate world state for new chats with narrator greeting
+				if (isNewChat && autoWorldStateEnabled && worldSidebarEnabled) {
+					const hasNarratorMessage = result.messages.some(m => m.role === 'narrator');
+					if (hasNarratorMessage) {
+						// Trigger world state generation after a short delay
+						setTimeout(() => {
+							triggerWorldStateUpdate();
+						}, 500);
+					}
+				}
 			}
 
 			setTimeout(() => options.onScrollToBottom(), 100);
