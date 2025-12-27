@@ -291,15 +291,17 @@
 		// Handle action blocks that may contain inner *emphasis* asterisks
 		// Process line by line to handle full-line action blocks correctly
 		processed = processed.split('\n').map(line => {
-			// Check if line starts and ends with asterisks (full action block with possible inner emphasis)
-			const fullActionMatch = line.match(/^\*(.+)\*$/);
-			if (fullActionMatch) {
+			// Check if line is EXACTLY one action block (starts with *, ends with *, no other * pairs inside)
+			// Use a non-greedy match that ensures there's no closing * followed by space and opening *
+			const fullActionMatch = line.match(/^\*([^*]+(?:\*[^*]+\*[^*]*)*[^*]*)\*$/);
+			// Only treat as full-line action if line starts and ends with * AND there's no "* *" pattern (multiple actions)
+			if (fullActionMatch && !line.match(/\*\s+\*/)) {
 				const content = fullActionMatch[1];
 				// Process any inner asterisks as emphasis
 				const processedContent = processAsterisksInAction(content);
 				return `%%ACTION_START%%${processedContent}%%ACTION_END%%`;
 			}
-			// For inline actions without inner emphasis, use simple matching
+			// For inline actions (including multiple on same line), use simple matching
 			return line.replace(/\*([^*]+)\*/g, (match, content) => {
 				return `%%ACTION_START%%${content}%%ACTION_END%%`;
 			});

@@ -13,6 +13,10 @@ export const users = sqliteTable('users', {
 	avatarStyle: text('avatar_style').notNull().default('circle'), // 'circle' or 'rounded' (rounded square)
 	textCleanupEnabled: integer('text_cleanup_enabled', { mode: 'boolean' }).notNull().default(true), // Enable asterisk normalization and quote cleanup
 	autoWrapActions: integer('auto_wrap_actions', { mode: 'boolean' }).notNull().default(false), // Auto-wrap plain text with asterisks (requires textCleanupEnabled)
+	// Random narration settings
+	randomNarrationEnabled: integer('random_narration_enabled', { mode: 'boolean' }).notNull().default(false),
+	randomNarrationMinMessages: integer('random_narration_min_messages').notNull().default(3),
+	randomNarrationMaxMessages: integer('random_narration_max_messages').notNull().default(8),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.$defaultFn(() => new Date())

@@ -75,7 +75,8 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 				settings,
 				'chat',
 				conversation.id,
-				conversation.scenario // pass scenario override from conversation
+				conversation.scenario, // pass scenario override from conversation
+				parseInt(userId)
 			);
 		} catch (genError) {
 			// Stop typing indicator on generation error

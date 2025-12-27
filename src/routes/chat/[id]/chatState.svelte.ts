@@ -51,6 +51,14 @@ export function createChatState(options: ChatStateOptions) {
 	let userAvatar = $state<string | null>(null);
 	let userName = $state<string | null>(null);
 
+	// Random narration settings
+	let randomNarrationEnabled = $state(false);
+	let randomNarrationMinMessages = $state(3);
+	let randomNarrationMaxMessages = $state(8);
+	let messagesSinceLastNarration = $state(0);
+	let nextNarrationThreshold = $state(0);
+	let randomNarrationPending = $state(false);
+
 	// Character image visibility (persisted to localStorage)
 	let showCharacterImage = $state(browser ? localStorage.getItem('chatCharacterImageVisible') !== 'false' : true);
 
@@ -158,6 +166,11 @@ export function createChatState(options: ChatStateOptions) {
 		}
 	);
 
+	// Helper to pick random threshold for next narration
+	function pickNextNarrationThreshold() {
+		return Math.floor(Math.random() * (randomNarrationMaxMessages - randomNarrationMinMessages + 1)) + randomNarrationMinMessages;
+	}
+
 	// Settings handlers
 	async function loadSettings() {
 		const settings = await api.loadSettings();
@@ -165,15 +178,32 @@ export function createChatState(options: ChatStateOptions) {
 		avatarStyle = settings.avatarStyle;
 		textCleanupEnabled = settings.textCleanupEnabled;
 		autoWrapActions = settings.autoWrapActions;
+		randomNarrationEnabled = settings.randomNarrationEnabled;
+		randomNarrationMinMessages = settings.randomNarrationMinMessages;
+		randomNarrationMaxMessages = settings.randomNarrationMaxMessages;
 		userAvatar = settings.userAvatar;
 		userName = settings.userName;
+
+		// Set initial threshold if enabled
+		if (randomNarrationEnabled && nextNarrationThreshold === 0) {
+			nextNarrationThreshold = pickNextNarrationThreshold();
+		}
 	}
 
-	function handleSettingsUpdate(e: CustomEvent<{ chatLayout: 'bubbles' | 'discord'; avatarStyle: 'circle' | 'rounded'; textCleanupEnabled: boolean; autoWrapActions: boolean }>) {
+	function handleSettingsUpdate(e: CustomEvent<{ chatLayout: 'bubbles' | 'discord'; avatarStyle: 'circle' | 'rounded'; textCleanupEnabled: boolean; autoWrapActions: boolean; randomNarrationEnabled?: boolean; randomNarrationMinMessages?: number; randomNarrationMaxMessages?: number }>) {
 		chatLayout = e.detail.chatLayout;
 		if (e.detail.avatarStyle) avatarStyle = e.detail.avatarStyle;
 		if (typeof e.detail.textCleanupEnabled === 'boolean') textCleanupEnabled = e.detail.textCleanupEnabled;
 		if (typeof e.detail.autoWrapActions === 'boolean') autoWrapActions = e.detail.autoWrapActions;
+		if (typeof e.detail.randomNarrationEnabled === 'boolean') {
+			randomNarrationEnabled = e.detail.randomNarrationEnabled;
+			// Reset threshold when enabled
+			if (randomNarrationEnabled && nextNarrationThreshold === 0) {
+				nextNarrationThreshold = pickNextNarrationThreshold();
+			}
+		}
+		if (typeof e.detail.randomNarrationMinMessages === 'number') randomNarrationMinMessages = e.detail.randomNarrationMinMessages;
+		if (typeof e.detail.randomNarrationMaxMessages === 'number') randomNarrationMaxMessages = e.detail.randomNarrationMaxMessages;
 	}
 
 	// Character and conversation loading
@@ -301,6 +331,31 @@ export function createChatState(options: ChatStateOptions) {
 		}
 	}
 
+	// Random narration trigger
+	async function triggerRandomNarration() {
+		if (!conversationId || !character || randomNarrationPending || sending) return;
+
+		randomNarrationPending = true;
+
+		try {
+			// Pick a random action type: look_character, look_scene, or narrate
+			const actionTypes: api.SceneActionType[] = ['look_character', 'look_scene', 'narrate'];
+			const randomAction = actionTypes[Math.floor(Math.random() * actionTypes.length)];
+
+			// For look_character, we need to provide character context
+			let context: { characterId: number; characterName: string } | undefined;
+			if (randomAction === 'look_character') {
+				context = { characterId: character.id, characterName: character.name };
+			}
+
+			await api.triggerSceneAction(options.characterId, randomAction, undefined, context, conversationId);
+		} catch (error) {
+			console.error('Failed to trigger random narration:', error);
+		} finally {
+			randomNarrationPending = false;
+		}
+	}
+
 	// Socket and lifecycle
 	function setupSocket() {
 		initSocket();
@@ -309,6 +364,23 @@ export function createChatState(options: ChatStateOptions) {
 			if (!messages.find((m) => m.id === message.id)) {
 				messages = [...messages, message];
 				setTimeout(() => options.onScrollToBottom(), 100);
+
+				// Track messages for random narration (only for user/assistant messages, not narrator)
+				if (randomNarrationEnabled && (message.role === 'user' || message.role === 'assistant')) {
+					messagesSinceLastNarration++;
+
+					// Check if we should trigger random narration
+					if (messagesSinceLastNarration >= nextNarrationThreshold && message.role === 'assistant') {
+						// Reset counter and pick new threshold
+						messagesSinceLastNarration = 0;
+						nextNarrationThreshold = pickNextNarrationThreshold();
+
+						// Trigger after a short delay so the current message renders first
+						setTimeout(() => {
+							triggerRandomNarration();
+						}, 500);
+					}
+				}
 			}
 		});
 

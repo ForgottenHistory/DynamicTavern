@@ -41,6 +41,9 @@ export async function loadSettings(): Promise<{
 	avatarStyle: 'circle' | 'rounded';
 	textCleanupEnabled: boolean;
 	autoWrapActions: boolean;
+	randomNarrationEnabled: boolean;
+	randomNarrationMinMessages: number;
+	randomNarrationMaxMessages: number;
 	userAvatar: string | null;
 	userName: string | null;
 }> {
@@ -53,6 +56,9 @@ export async function loadSettings(): Promise<{
 				avatarStyle: result.avatarStyle || 'circle',
 				textCleanupEnabled: result.textCleanupEnabled ?? true,
 				autoWrapActions: result.autoWrapActions ?? false,
+				randomNarrationEnabled: result.randomNarrationEnabled ?? false,
+				randomNarrationMinMessages: result.randomNarrationMinMessages ?? 3,
+				randomNarrationMaxMessages: result.randomNarrationMaxMessages ?? 8,
 				userAvatar: result.userAvatar || null,
 				userName: result.userName || null
 			};
@@ -65,6 +71,9 @@ export async function loadSettings(): Promise<{
 		avatarStyle: 'circle',
 		textCleanupEnabled: true,
 		autoWrapActions: false,
+		randomNarrationEnabled: false,
+		randomNarrationMinMessages: 3,
+		randomNarrationMaxMessages: 8,
 		userAvatar: null,
 		userName: null
 	};

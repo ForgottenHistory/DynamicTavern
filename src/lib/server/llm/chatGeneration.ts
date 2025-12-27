@@ -5,11 +5,15 @@ import { lorebookService } from '../services/lorebookService';
 import { worldInfoService } from '../services/worldInfoService';
 import { logger } from '../utils/logger';
 import type { Message, Character, LlmSettings } from '../db/schema';
+import type { LlmSettingsData } from '../services/llmSettingsFileService';
 import {
 	loadSystemPromptFromFile,
 	loadWritingStyle,
 	replaceTemplateVariables
 } from './promptUtils';
+
+// Union type that accepts both database and file-based settings
+type LlmSettingsLike = LlmSettings | LlmSettingsData;
 
 export interface ChatCompletionResult {
 	content: string;
@@ -24,16 +28,20 @@ export interface ChatCompletionResult {
  * @param messageType - Type of message for logging ('chat', 'regenerate', 'swipe')
  * @param conversationId - Optional conversation ID for world info lookup
  * @param scenarioOverride - Optional scenario override from conversation (takes precedence over character card)
+ * @param userId - User ID for persona lookup and lorebook context
  * @returns Generated assistant message content and reasoning
  */
 export async function generateChatCompletion(
 	conversationHistory: Message[],
 	character: Character,
-	settings: LlmSettings,
+	settings: LlmSettingsLike,
 	messageType: string = 'chat',
 	conversationId?: number,
-	scenarioOverride?: string | null
+	scenarioOverride?: string | null,
+	userId?: number
 ): Promise<ChatCompletionResult> {
+	// Get userId from settings if not passed explicitly (for backwards compatibility)
+	const effectiveUserId = userId ?? ('userId' in settings ? settings.userId : 0);
 	// Parse character card data
 	let characterData: any = {};
 	try {
@@ -48,7 +56,7 @@ export async function generateChatCompletion(
 	}
 
 	// Get active user info (persona or default profile)
-	const userInfo = await personaService.getActiveUserInfo(settings.userId);
+	const userInfo = await personaService.getActiveUserInfo(effectiveUserId);
 	const userName = userInfo.name;
 
 	// Load system prompt from file
@@ -104,7 +112,7 @@ export async function generateChatCompletion(
 
 	// Add lorebook/world info context based on conversation keywords
 	const lorebookContext = await lorebookService.buildLorebookContext(
-		settings.userId,
+		effectiveUserId,
 		character.id,
 		conversationHistory.map((m) => ({ content: m.content }))
 	);
@@ -138,7 +146,7 @@ export async function generateChatCompletion(
 	// Call LLM service with user settings
 	const response = await llmService.createChatCompletion({
 		messages: formattedMessages,
-		userId: settings.userId,
+		userId: effectiveUserId,
 		model: settings.model,
 		temperature: settings.temperature,
 		maxTokens: settings.maxTokens

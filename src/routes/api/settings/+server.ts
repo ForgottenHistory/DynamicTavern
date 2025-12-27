@@ -27,6 +27,9 @@ export const GET: RequestHandler = async ({ cookies }) => {
 		avatarStyle: user.avatarStyle || 'circle',
 		textCleanupEnabled: user.textCleanupEnabled ?? true,
 		autoWrapActions: user.autoWrapActions ?? false,
+		randomNarrationEnabled: user.randomNarrationEnabled ?? false,
+		randomNarrationMinMessages: user.randomNarrationMinMessages ?? 3,
+		randomNarrationMaxMessages: user.randomNarrationMaxMessages ?? 8,
 		userAvatar: activeUserInfo.avatarData || null,
 		userName: activeUserInfo.name
 	});
@@ -39,7 +42,7 @@ export const PUT: RequestHandler = async ({ cookies, request }) => {
 	}
 
 	const body = await request.json();
-	const { chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, writingStyle } = body;
+	const { chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages, writingStyle } = body;
 
 	// Validate chatLayout
 	if (chatLayout && !['bubbles', 'discord'].includes(chatLayout)) {
@@ -51,14 +54,27 @@ export const PUT: RequestHandler = async ({ cookies, request }) => {
 		return json({ error: 'Invalid avatar style value' }, { status: 400 });
 	}
 
-	const updateData: { chatLayout?: string; avatarStyle?: string; textCleanupEnabled?: boolean; autoWrapActions?: boolean; writingStyle?: string } = {};
+	// Validate random narration range
+	if (randomNarrationMinMessages !== undefined && randomNarrationMaxMessages !== undefined) {
+		if (randomNarrationMinMessages < 1 || randomNarrationMaxMessages < 1) {
+			return json({ error: 'Random narration values must be at least 1' }, { status: 400 });
+		}
+		if (randomNarrationMinMessages > randomNarrationMaxMessages) {
+			return json({ error: 'Minimum messages cannot be greater than maximum' }, { status: 400 });
+		}
+	}
+
+	const updateData: { chatLayout?: string; avatarStyle?: string; textCleanupEnabled?: boolean; autoWrapActions?: boolean; randomNarrationEnabled?: boolean; randomNarrationMinMessages?: number; randomNarrationMaxMessages?: number; writingStyle?: string } = {};
 	if (chatLayout) updateData.chatLayout = chatLayout;
 	if (avatarStyle) updateData.avatarStyle = avatarStyle;
 	if (typeof textCleanupEnabled === 'boolean') updateData.textCleanupEnabled = textCleanupEnabled;
 	if (typeof autoWrapActions === 'boolean') updateData.autoWrapActions = autoWrapActions;
+	if (typeof randomNarrationEnabled === 'boolean') updateData.randomNarrationEnabled = randomNarrationEnabled;
+	if (typeof randomNarrationMinMessages === 'number') updateData.randomNarrationMinMessages = randomNarrationMinMessages;
+	if (typeof randomNarrationMaxMessages === 'number') updateData.randomNarrationMaxMessages = randomNarrationMaxMessages;
 	if (typeof writingStyle === 'string') updateData.writingStyle = writingStyle;
 
 	await db.update(users).set(updateData).where(eq(users.id, parseInt(userId)));
 
-	return json({ success: true, chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, writingStyle });
+	return json({ success: true, chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages, writingStyle });
 };
