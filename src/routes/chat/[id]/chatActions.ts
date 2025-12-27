@@ -45,6 +45,9 @@ export async function loadSettings(): Promise<{
 	randomNarrationMinMessages: number;
 	randomNarrationMaxMessages: number;
 	worldSidebarEnabled: boolean;
+	autoWorldStateEnabled: boolean;
+	autoWorldStateMinMessages: number;
+	autoWorldStateMaxMessages: number;
 	userAvatar: string | null;
 	userName: string | null;
 }> {
@@ -61,6 +64,9 @@ export async function loadSettings(): Promise<{
 				randomNarrationMinMessages: result.randomNarrationMinMessages ?? 3,
 				randomNarrationMaxMessages: result.randomNarrationMaxMessages ?? 8,
 				worldSidebarEnabled: result.worldSidebarEnabled ?? false,
+				autoWorldStateEnabled: result.autoWorldStateEnabled ?? false,
+				autoWorldStateMinMessages: result.autoWorldStateMinMessages ?? 5,
+				autoWorldStateMaxMessages: result.autoWorldStateMaxMessages ?? 12,
 				userAvatar: result.userAvatar || null,
 				userName: result.userName || null
 			};
@@ -77,6 +83,9 @@ export async function loadSettings(): Promise<{
 		randomNarrationMinMessages: 3,
 		randomNarrationMaxMessages: 8,
 		worldSidebarEnabled: false,
+		autoWorldStateEnabled: false,
+		autoWorldStateMinMessages: 5,
+		autoWorldStateMaxMessages: 12,
 		userAvatar: null,
 		userName: null
 	};
@@ -365,26 +374,24 @@ export async function triggerSceneAction(
 	}
 }
 
-// World state generation
-export interface ClothingItem {
+// World state generation - generic structure for any attributes
+export interface ListItem {
 	name: string;
 	description: string;
 }
 
-export interface CharacterState {
-	clothes: ClothingItem[];
-	mood: string;
-	position: string;
+export interface WorldAttribute {
+	name: string;
+	type: 'text' | 'list';
+	value: string | ListItem[];
 }
 
-export interface UserState {
-	clothes: ClothingItem[];
-	position: string;
+export interface EntityState {
+	attributes: WorldAttribute[];
 }
 
 export interface WorldStateData {
-	character: CharacterState;
-	user: UserState;
+	[entity: string]: EntityState;
 }
 
 // Backwards compatibility alias
@@ -410,9 +417,12 @@ export async function getWorldState(characterId: number): Promise<WorldStateData
 		const response = await fetch(`/api/chat/${characterId}/clothes`);
 		if (response.ok) {
 			const data = await response.json();
-			// Check if it's valid world state data (not an error response)
-			if (data && data.character && data.user) {
-				return data;
+			// Check if it's valid world state data (has entity with attributes)
+			if (data && typeof data === 'object') {
+				const firstEntity = Object.values(data)[0] as EntityState | undefined;
+				if (firstEntity?.attributes) {
+					return data;
+				}
 			}
 		}
 		return null;

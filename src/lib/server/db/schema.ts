@@ -19,6 +19,10 @@ export const users = sqliteTable('users', {
 	randomNarrationMaxMessages: integer('random_narration_max_messages').notNull().default(8),
 	// World sidebar
 	worldSidebarEnabled: integer('world_sidebar_enabled', { mode: 'boolean' }).notNull().default(false),
+	// Auto world state update settings
+	autoWorldStateEnabled: integer('auto_world_state_enabled', { mode: 'boolean' }).notNull().default(false),
+	autoWorldStateMinMessages: integer('auto_world_state_min_messages').notNull().default(5),
+	autoWorldStateMaxMessages: integer('auto_world_state_max_messages').notNull().default(12),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.$defaultFn(() => new Date())

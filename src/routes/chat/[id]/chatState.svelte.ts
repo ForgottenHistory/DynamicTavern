@@ -59,6 +59,14 @@ export function createChatState(options: ChatStateOptions) {
 	let nextNarrationThreshold = $state(0);
 	let randomNarrationPending = $state(false);
 
+	// Auto world state update settings
+	let autoWorldStateEnabled = $state(false);
+	let autoWorldStateMinMessages = $state(5);
+	let autoWorldStateMaxMessages = $state(12);
+	let messagesSinceLastWorldUpdate = $state(0);
+	let nextWorldUpdateThreshold = $state(0);
+	let worldUpdatePending = $state(false);
+
 	// Character image visibility (persisted to localStorage)
 	let showCharacterImage = $state(browser ? localStorage.getItem('chatCharacterImageVisible') !== 'false' : true);
 
@@ -172,6 +180,11 @@ export function createChatState(options: ChatStateOptions) {
 		return Math.floor(Math.random() * (randomNarrationMaxMessages - randomNarrationMinMessages + 1)) + randomNarrationMinMessages;
 	}
 
+	// Helper to pick random threshold for next world state update
+	function pickNextWorldUpdateThreshold() {
+		return Math.floor(Math.random() * (autoWorldStateMaxMessages - autoWorldStateMinMessages + 1)) + autoWorldStateMinMessages;
+	}
+
 	// Settings handlers
 	async function loadSettings() {
 		const settings = await api.loadSettings();
@@ -183,6 +196,9 @@ export function createChatState(options: ChatStateOptions) {
 		randomNarrationMinMessages = settings.randomNarrationMinMessages;
 		randomNarrationMaxMessages = settings.randomNarrationMaxMessages;
 		worldSidebarEnabled = settings.worldSidebarEnabled;
+		autoWorldStateEnabled = settings.autoWorldStateEnabled;
+		autoWorldStateMinMessages = settings.autoWorldStateMinMessages;
+		autoWorldStateMaxMessages = settings.autoWorldStateMaxMessages;
 		userAvatar = settings.userAvatar;
 		userName = settings.userName;
 
@@ -190,9 +206,12 @@ export function createChatState(options: ChatStateOptions) {
 		if (randomNarrationEnabled && nextNarrationThreshold === 0) {
 			nextNarrationThreshold = pickNextNarrationThreshold();
 		}
+		if (autoWorldStateEnabled && nextWorldUpdateThreshold === 0) {
+			nextWorldUpdateThreshold = pickNextWorldUpdateThreshold();
+		}
 	}
 
-	function handleSettingsUpdate(e: CustomEvent<{ chatLayout: 'bubbles' | 'discord'; avatarStyle: 'circle' | 'rounded'; textCleanupEnabled: boolean; autoWrapActions: boolean; randomNarrationEnabled?: boolean; randomNarrationMinMessages?: number; randomNarrationMaxMessages?: number; worldSidebarEnabled?: boolean }>) {
+	function handleSettingsUpdate(e: CustomEvent<{ chatLayout: 'bubbles' | 'discord'; avatarStyle: 'circle' | 'rounded'; textCleanupEnabled: boolean; autoWrapActions: boolean; randomNarrationEnabled?: boolean; randomNarrationMinMessages?: number; randomNarrationMaxMessages?: number; worldSidebarEnabled?: boolean; autoWorldStateEnabled?: boolean; autoWorldStateMinMessages?: number; autoWorldStateMaxMessages?: number }>) {
 		chatLayout = e.detail.chatLayout;
 		if (e.detail.avatarStyle) avatarStyle = e.detail.avatarStyle;
 		if (typeof e.detail.textCleanupEnabled === 'boolean') textCleanupEnabled = e.detail.textCleanupEnabled;
@@ -207,6 +226,15 @@ export function createChatState(options: ChatStateOptions) {
 		if (typeof e.detail.randomNarrationMinMessages === 'number') randomNarrationMinMessages = e.detail.randomNarrationMinMessages;
 		if (typeof e.detail.randomNarrationMaxMessages === 'number') randomNarrationMaxMessages = e.detail.randomNarrationMaxMessages;
 		if (typeof e.detail.worldSidebarEnabled === 'boolean') worldSidebarEnabled = e.detail.worldSidebarEnabled;
+		if (typeof e.detail.autoWorldStateEnabled === 'boolean') {
+			autoWorldStateEnabled = e.detail.autoWorldStateEnabled;
+			// Reset threshold when enabled
+			if (autoWorldStateEnabled && nextWorldUpdateThreshold === 0) {
+				nextWorldUpdateThreshold = pickNextWorldUpdateThreshold();
+			}
+		}
+		if (typeof e.detail.autoWorldStateMinMessages === 'number') autoWorldStateMinMessages = e.detail.autoWorldStateMinMessages;
+		if (typeof e.detail.autoWorldStateMaxMessages === 'number') autoWorldStateMaxMessages = e.detail.autoWorldStateMaxMessages;
 	}
 
 	// Character and conversation loading
@@ -250,8 +278,8 @@ export function createChatState(options: ChatStateOptions) {
 				joinConversation(conversationId);
 				// Load scene characters for the conversation
 				await loadSceneCharacters();
-				// Load saved clothes for existing conversation - Legacy feature disabled
-				// clothesActions.loadClothes();
+				// Load saved world state for existing conversation
+				worldActions.loadWorldState();
 			}
 
 			setTimeout(() => options.onScrollToBottom(), 100);
@@ -359,6 +387,21 @@ export function createChatState(options: ChatStateOptions) {
 		}
 	}
 
+	// Auto world state update trigger
+	async function triggerWorldStateUpdate() {
+		if (!conversationId || worldUpdatePending || worldStateLoading) return;
+
+		worldUpdatePending = true;
+
+		try {
+			await worldActions.generateWorldState();
+		} catch (error) {
+			console.error('Failed to trigger world state update:', error);
+		} finally {
+			worldUpdatePending = false;
+		}
+	}
+
 	// Socket and lifecycle
 	function setupSocket() {
 		initSocket();
@@ -382,6 +425,31 @@ export function createChatState(options: ChatStateOptions) {
 						setTimeout(() => {
 							triggerRandomNarration();
 						}, 500);
+					}
+				}
+
+				// Auto world state update logic
+				if (autoWorldStateEnabled && worldSidebarEnabled) {
+					// Trigger on narrator messages (greetings, scene descriptions)
+					if (message.role === 'narrator') {
+						setTimeout(() => {
+							triggerWorldStateUpdate();
+						}, 500);
+					}
+					// Also track messages for periodic updates
+					else if (message.role === 'user' || message.role === 'assistant') {
+						messagesSinceLastWorldUpdate++;
+
+						// Check if we should trigger world state update
+						if (messagesSinceLastWorldUpdate >= nextWorldUpdateThreshold && message.role === 'assistant') {
+							// Reset counter and pick new threshold
+							messagesSinceLastWorldUpdate = 0;
+							nextWorldUpdateThreshold = pickNextWorldUpdateThreshold();
+
+							setTimeout(() => {
+								triggerWorldStateUpdate();
+							}, 500);
+						}
 					}
 				}
 			}

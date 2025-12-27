@@ -31,6 +31,9 @@ export const GET: RequestHandler = async ({ cookies }) => {
 		randomNarrationMinMessages: user.randomNarrationMinMessages ?? 3,
 		randomNarrationMaxMessages: user.randomNarrationMaxMessages ?? 8,
 		worldSidebarEnabled: user.worldSidebarEnabled ?? false,
+		autoWorldStateEnabled: user.autoWorldStateEnabled ?? false,
+		autoWorldStateMinMessages: user.autoWorldStateMinMessages ?? 5,
+		autoWorldStateMaxMessages: user.autoWorldStateMaxMessages ?? 12,
 		userAvatar: activeUserInfo.avatarData || null,
 		userName: activeUserInfo.name
 	});
@@ -43,7 +46,7 @@ export const PUT: RequestHandler = async ({ cookies, request }) => {
 	}
 
 	const body = await request.json();
-	const { chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages, worldSidebarEnabled, writingStyle } = body;
+	const { chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages, worldSidebarEnabled, autoWorldStateEnabled, autoWorldStateMinMessages, autoWorldStateMaxMessages, writingStyle } = body;
 
 	// Validate chatLayout
 	if (chatLayout && !['bubbles', 'discord'].includes(chatLayout)) {
@@ -65,7 +68,17 @@ export const PUT: RequestHandler = async ({ cookies, request }) => {
 		}
 	}
 
-	const updateData: { chatLayout?: string; avatarStyle?: string; textCleanupEnabled?: boolean; autoWrapActions?: boolean; randomNarrationEnabled?: boolean; randomNarrationMinMessages?: number; randomNarrationMaxMessages?: number; worldSidebarEnabled?: boolean; writingStyle?: string } = {};
+	// Validate auto world state range
+	if (autoWorldStateMinMessages !== undefined && autoWorldStateMaxMessages !== undefined) {
+		if (autoWorldStateMinMessages < 1 || autoWorldStateMaxMessages < 1) {
+			return json({ error: 'Auto world state values must be at least 1' }, { status: 400 });
+		}
+		if (autoWorldStateMinMessages > autoWorldStateMaxMessages) {
+			return json({ error: 'Minimum messages cannot be greater than maximum' }, { status: 400 });
+		}
+	}
+
+	const updateData: { chatLayout?: string; avatarStyle?: string; textCleanupEnabled?: boolean; autoWrapActions?: boolean; randomNarrationEnabled?: boolean; randomNarrationMinMessages?: number; randomNarrationMaxMessages?: number; worldSidebarEnabled?: boolean; autoWorldStateEnabled?: boolean; autoWorldStateMinMessages?: number; autoWorldStateMaxMessages?: number; writingStyle?: string } = {};
 	if (chatLayout) updateData.chatLayout = chatLayout;
 	if (avatarStyle) updateData.avatarStyle = avatarStyle;
 	if (typeof textCleanupEnabled === 'boolean') updateData.textCleanupEnabled = textCleanupEnabled;
@@ -74,9 +87,12 @@ export const PUT: RequestHandler = async ({ cookies, request }) => {
 	if (typeof randomNarrationMinMessages === 'number') updateData.randomNarrationMinMessages = randomNarrationMinMessages;
 	if (typeof randomNarrationMaxMessages === 'number') updateData.randomNarrationMaxMessages = randomNarrationMaxMessages;
 	if (typeof worldSidebarEnabled === 'boolean') updateData.worldSidebarEnabled = worldSidebarEnabled;
+	if (typeof autoWorldStateEnabled === 'boolean') updateData.autoWorldStateEnabled = autoWorldStateEnabled;
+	if (typeof autoWorldStateMinMessages === 'number') updateData.autoWorldStateMinMessages = autoWorldStateMinMessages;
+	if (typeof autoWorldStateMaxMessages === 'number') updateData.autoWorldStateMaxMessages = autoWorldStateMaxMessages;
 	if (typeof writingStyle === 'string') updateData.writingStyle = writingStyle;
 
 	await db.update(users).set(updateData).where(eq(users.id, parseInt(userId)));
 
-	return json({ success: true, chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages, worldSidebarEnabled, writingStyle });
+	return json({ success: true, chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages, worldSidebarEnabled, autoWorldStateEnabled, autoWorldStateMinMessages, autoWorldStateMaxMessages, writingStyle });
 };

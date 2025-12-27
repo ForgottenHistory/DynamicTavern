@@ -121,6 +121,22 @@ Custom Vite plugin integrates Socket.IO. Rooms: `conversation-{conversationId}`.
 
 Supports v1/v2 formats. Image extraction from PNG metadata via `src/lib/utils/characterImageParser.ts`.
 
+## Database Migrations
+
+When adding new columns to existing tables, `drizzle-kit push` may warn about data loss for NOT NULL columns. To avoid truncating tables, add columns directly with SQLite:
+
+```bash
+sqlite3 local.db "ALTER TABLE table_name ADD COLUMN column_name TYPE NOT NULL DEFAULT value;"
+```
+
+Example adding multiple columns:
+```bash
+sqlite3 local.db "ALTER TABLE users ADD COLUMN auto_world_state_enabled INTEGER NOT NULL DEFAULT 0;"
+sqlite3 local.db "ALTER TABLE users ADD COLUMN auto_world_state_min_messages INTEGER NOT NULL DEFAULT 5;"
+```
+
+This applies the default to existing rows. Then `drizzle-kit push` will see the columns as already existing.
+
 ## API Patterns
 
 - Endpoints at `src/routes/api/[feature]/+server.ts`

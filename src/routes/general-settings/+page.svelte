@@ -14,6 +14,9 @@
 	let randomNarrationMinMessages = $state(3);
 	let randomNarrationMaxMessages = $state(8);
 	let worldSidebarEnabled = $state(false);
+	let autoWorldStateEnabled = $state(false);
+	let autoWorldStateMinMessages = $state(5);
+	let autoWorldStateMaxMessages = $state(12);
 	let writingStyle = $state('');
 	let loading = $state(true);
 
@@ -39,6 +42,9 @@
 				randomNarrationMinMessages = data.randomNarrationMinMessages ?? 3;
 				randomNarrationMaxMessages = data.randomNarrationMaxMessages ?? 8;
 				worldSidebarEnabled = data.worldSidebarEnabled ?? false;
+				autoWorldStateEnabled = data.autoWorldStateEnabled ?? false;
+				autoWorldStateMinMessages = data.autoWorldStateMinMessages ?? 5;
+				autoWorldStateMaxMessages = data.autoWorldStateMaxMessages ?? 12;
 			}
 
 			if (writingStyleRes.ok) {
@@ -61,7 +67,7 @@
 				fetch('/api/settings', {
 					method: 'PUT',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages, worldSidebarEnabled })
+					body: JSON.stringify({ chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages, worldSidebarEnabled, autoWorldStateEnabled, autoWorldStateMinMessages, autoWorldStateMaxMessages })
 				}),
 				fetch('/api/writing-style', {
 					method: 'PUT',
@@ -73,7 +79,7 @@
 			if (settingsRes.ok && writingStyleRes.ok) {
 				message = { type: 'success', text: 'Settings saved successfully!' };
 				// Dispatch event so chat components can react
-				window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages, worldSidebarEnabled } }));
+				window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages, worldSidebarEnabled, autoWorldStateEnabled, autoWorldStateMinMessages, autoWorldStateMaxMessages } }));
 			} else {
 				const data = await settingsRes.json();
 				message = { type: 'error', text: data.error || 'Failed to save settings' };
@@ -422,26 +428,97 @@
 								Show a sidebar panel with world state information during chat
 							</p>
 
-							<label class="flex items-center justify-between p-4 rounded-xl border border-[var(--border-primary)] hover:border-[var(--border-secondary)] transition cursor-pointer">
-								<div>
-									<p class="font-medium text-[var(--text-primary)]">Enable World Sidebar</p>
-									<p class="text-sm text-[var(--text-muted)] mt-1">
-										Display a collapsible panel with clothing, items, and other world state
-									</p>
-								</div>
-								<button
-									type="button"
-									role="switch"
-									aria-checked={worldSidebarEnabled}
-									aria-label="Toggle world sidebar"
-									onclick={() => worldSidebarEnabled = !worldSidebarEnabled}
-									class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {worldSidebarEnabled ? 'bg-[var(--accent-primary)]' : 'bg-[var(--bg-tertiary)]'}"
-								>
-									<span
-										class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {worldSidebarEnabled ? 'translate-x-6' : 'translate-x-1'}"
-									></span>
-								</button>
-							</label>
+							<div class="space-y-4">
+								<label class="flex items-center justify-between p-4 rounded-xl border border-[var(--border-primary)] hover:border-[var(--border-secondary)] transition cursor-pointer">
+									<div>
+										<p class="font-medium text-[var(--text-primary)]">Enable World Sidebar</p>
+										<p class="text-sm text-[var(--text-muted)] mt-1">
+											Display a collapsible panel with clothing, items, and other world state
+										</p>
+									</div>
+									<button
+										type="button"
+										role="switch"
+										aria-checked={worldSidebarEnabled}
+										aria-label="Toggle world sidebar"
+										onclick={() => worldSidebarEnabled = !worldSidebarEnabled}
+										class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {worldSidebarEnabled ? 'bg-[var(--accent-primary)]' : 'bg-[var(--bg-tertiary)]'}"
+									>
+										<span
+											class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {worldSidebarEnabled ? 'translate-x-6' : 'translate-x-1'}"
+										></span>
+									</button>
+								</label>
+
+								<!-- Auto World State Update (only visible when sidebar enabled) -->
+								{#if worldSidebarEnabled}
+									<label class="flex items-center justify-between p-4 ml-6 rounded-xl border border-[var(--border-primary)] hover:border-[var(--border-secondary)] transition cursor-pointer bg-[var(--bg-primary)]/50">
+										<div>
+											<p class="font-medium text-[var(--text-primary)]">Auto-Update World State</p>
+											<p class="text-sm text-[var(--text-muted)] mt-1">
+												Automatically regenerate world state during conversations
+											</p>
+										</div>
+										<button
+											type="button"
+											role="switch"
+											aria-checked={autoWorldStateEnabled}
+											aria-label="Toggle auto world state update"
+											onclick={() => autoWorldStateEnabled = !autoWorldStateEnabled}
+											class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {autoWorldStateEnabled ? 'bg-[var(--accent-primary)]' : 'bg-[var(--bg-tertiary)]'}"
+										>
+											<span
+												class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {autoWorldStateEnabled ? 'translate-x-6' : 'translate-x-1'}"
+											></span>
+										</button>
+									</label>
+
+									<!-- Frequency settings (only visible when auto update enabled) -->
+									{#if autoWorldStateEnabled}
+										<div class="ml-12 p-4 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-primary)]/50">
+											<p class="font-medium text-[var(--text-primary)] mb-3">Update Frequency</p>
+											<p class="text-sm text-[var(--text-muted)] mb-4">
+												World state will update on narrator greetings and randomly between this range of messages
+											</p>
+
+											<div class="flex items-center gap-4">
+												<div class="flex-1">
+													<label class="text-sm text-[var(--text-secondary)] mb-1 block">Minimum</label>
+													<input
+														type="number"
+														min="1"
+														max="50"
+														bind:value={autoWorldStateMinMessages}
+														onchange={() => {
+															if (autoWorldStateMinMessages > autoWorldStateMaxMessages) {
+																autoWorldStateMaxMessages = autoWorldStateMinMessages;
+															}
+														}}
+														class="w-full bg-[var(--bg-tertiary)] text-[var(--text-primary)] rounded-lg border border-[var(--border-primary)] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+													/>
+												</div>
+												<span class="text-[var(--text-muted)] pt-6">to</span>
+												<div class="flex-1">
+													<label class="text-sm text-[var(--text-secondary)] mb-1 block">Maximum</label>
+													<input
+														type="number"
+														min="1"
+														max="50"
+														bind:value={autoWorldStateMaxMessages}
+														onchange={() => {
+															if (autoWorldStateMaxMessages < autoWorldStateMinMessages) {
+																autoWorldStateMinMessages = autoWorldStateMaxMessages;
+															}
+														}}
+														class="w-full bg-[var(--bg-tertiary)] text-[var(--text-primary)] rounded-lg border border-[var(--border-primary)] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+													/>
+												</div>
+												<span class="text-[var(--text-muted)] pt-6">messages</span>
+											</div>
+										</div>
+									{/if}
+								{/if}
+							</div>
 						</div>
 
 						<!-- Writing Style Section -->

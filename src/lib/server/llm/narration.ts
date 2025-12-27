@@ -81,11 +81,23 @@ export async function generateNarration(
 
 	// Get world info if conversation ID provided
 	let worldText = '';
-	let worldState: { character: { mood: string; position: string; clothes: { name: string; description: string }[] }; user: { position: string; clothes: { name: string; description: string }[] } } | null = null;
+	let charMood = '';
+	let charPosition = '';
+	let charClothes = '';
 	if (conversationId) {
 		const worldInfo = await worldInfoService.getWorldInfo(conversationId);
 		worldText = worldInfoService.formatWorldInfoForPrompt(worldInfo, character.name, userName);
-		worldState = worldInfo?.worldState || null;
+		// Extract character attributes for template variables
+		const charEntity = worldInfo?.worldState?.character;
+		if (charEntity?.attributes) {
+			for (const attr of charEntity.attributes) {
+				if (attr.name === 'mood' && attr.type === 'text') charMood = attr.value as string;
+				if (attr.name === 'position' && attr.type === 'text') charPosition = attr.value as string;
+				if (attr.name === 'clothes' && attr.type === 'list' && Array.isArray(attr.value)) {
+					charClothes = attr.value.map((item: { name: string; description: string }) => `${item.name}: ${item.description}`).join(', ');
+				}
+			}
+		}
 	}
 
 	// Get writing style from file
@@ -98,11 +110,6 @@ export async function generateNarration(
 			return `${name}: ${msg.content}`;
 		})
 		.join('\n\n');
-
-	// Format clothes as a simple list
-	const charClothes = worldState?.character.clothes
-		?.map(item => `${item.name}: ${item.description}`)
-		.join(', ') || '';
 
 	// Prepare template variables
 	// Use character.description (top-level) if available, otherwise fall back to cardData.description
@@ -117,9 +124,9 @@ export async function generateNarration(
 		post_history: character.postHistory || '',
 		writing_style: writingStyle,
 		// World state variables for conditionals
-		world_sidebar: !!worldState,
-		char_mood: worldState?.character.mood || '',
-		char_position: worldState?.character.position || '',
+		world_sidebar: !!(charMood || charPosition || charClothes),
+		char_mood: charMood,
+		char_position: charPosition,
 		char_clothes: charClothes
 	};
 

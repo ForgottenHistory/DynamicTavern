@@ -2,10 +2,35 @@ import { db } from '../db';
 import { conversations } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
-export interface ClothingItem {
+// Generic item for list-type attributes (e.g., clothes, inventory)
+export interface ListItem {
 	name: string;
 	description: string;
 }
+
+// A single attribute value - can be text or a list of items
+export interface WorldAttribute {
+	name: string;
+	type: 'text' | 'list';
+	value: string | ListItem[];
+}
+
+// Entity state is just a collection of attributes
+export interface EntityState {
+	attributes: WorldAttribute[];
+}
+
+// The world state contains named entities (character, user, or custom)
+export interface WorldStateData {
+	[entity: string]: EntityState;
+}
+
+export interface WorldInfo {
+	worldState?: WorldStateData;
+}
+
+// Legacy types for backwards compatibility
+export interface ClothingItem extends ListItem {}
 
 export interface CharacterState {
 	clothes: ClothingItem[];
@@ -18,18 +43,27 @@ export interface UserState {
 	position: string;
 }
 
-export interface WorldStateData {
-	character: CharacterState;
-	user: UserState;
+// Helper to get attribute value from entity
+function getAttributeValue(entity: EntityState | undefined, name: string): WorldAttribute | undefined {
+	return entity?.attributes.find(a => a.name.toLowerCase() === name.toLowerCase());
 }
 
-export interface WorldInfo {
-	worldState?: WorldStateData;
-	// Legacy: keep for backwards compatibility during migration
-	clothes?: {
-		character: ClothingItem[];
-		user: ClothingItem[];
-	};
+// Helper to get text attribute
+function getTextAttribute(entity: EntityState | undefined, name: string): string {
+	const attr = getAttributeValue(entity, name);
+	if (attr?.type === 'text' && typeof attr.value === 'string') {
+		return attr.value;
+	}
+	return '';
+}
+
+// Helper to get list attribute
+function getListAttribute(entity: EntityState | undefined, name: string): ListItem[] {
+	const attr = getAttributeValue(entity, name);
+	if (attr?.type === 'list' && Array.isArray(attr.value)) {
+		return attr.value;
+	}
+	return [];
 }
 
 class WorldInfoService {
@@ -46,10 +80,83 @@ class WorldInfoService {
 		}
 
 		try {
-			return JSON.parse(conversation.worldInfo);
+			const parsed = JSON.parse(conversation.worldInfo);
+			// Migrate old format to new if needed
+			return this.migrateWorldInfo(parsed);
 		} catch {
 			return null;
 		}
+	}
+
+	/**
+	 * Migrate old world info format to new generic format
+	 */
+	private migrateWorldInfo(data: any): WorldInfo {
+		// Already in new format
+		if (data.worldState && typeof data.worldState === 'object') {
+			const firstEntity = Object.values(data.worldState)[0] as any;
+			if (firstEntity?.attributes && Array.isArray(firstEntity.attributes)) {
+				return data;
+			}
+			// Old format with character/user having direct properties
+			return { worldState: this.migrateOldWorldState(data.worldState) };
+		}
+		// Legacy clothes-only format
+		if (data.clothes) {
+			return {
+				worldState: {
+					character: {
+						attributes: [
+							{ name: 'clothes', type: 'list', value: data.clothes.character || [] }
+						]
+					},
+					user: {
+						attributes: [
+							{ name: 'clothes', type: 'list', value: data.clothes.user || [] }
+						]
+					}
+				}
+			};
+		}
+		return data;
+	}
+
+	/**
+	 * Migrate old world state format (mood, position, clothes as direct properties)
+	 */
+	private migrateOldWorldState(oldState: any): WorldStateData {
+		const result: WorldStateData = {};
+
+		for (const [entityName, entityData] of Object.entries(oldState)) {
+			const entity = entityData as any;
+			const attributes: WorldAttribute[] = [];
+
+			// Convert known properties to attributes
+			if (entity.mood) {
+				attributes.push({ name: 'mood', type: 'text', value: entity.mood });
+			}
+			if (entity.position) {
+				attributes.push({ name: 'position', type: 'text', value: entity.position });
+			}
+			if (entity.clothes && Array.isArray(entity.clothes)) {
+				attributes.push({ name: 'clothes', type: 'list', value: entity.clothes });
+			}
+
+			// Add any other properties as text attributes
+			for (const [key, value] of Object.entries(entity)) {
+				if (!['mood', 'position', 'clothes'].includes(key)) {
+					if (Array.isArray(value)) {
+						attributes.push({ name: key, type: 'list', value: value as ListItem[] });
+					} else if (typeof value === 'string') {
+						attributes.push({ name: key, type: 'text', value });
+					}
+				}
+			}
+
+			result[entityName] = { attributes };
+		}
+
+		return result;
 	}
 
 	/**
@@ -63,7 +170,7 @@ class WorldInfoService {
 	}
 
 	/**
-	 * Update world state (clothes, mood, position)
+	 * Update world state
 	 */
 	async updateWorldState(conversationId: number, worldState: WorldStateData): Promise<void> {
 		const existing = await this.getWorldInfo(conversationId);
@@ -82,32 +189,11 @@ class WorldInfoService {
 	}
 
 	/**
-	 * Get world state (clothes, mood, position)
+	 * Get world state
 	 */
 	async getWorldState(conversationId: number): Promise<WorldStateData | null> {
 		const worldInfo = await this.getWorldInfo(conversationId);
-
-		// Return new format if available
-		if (worldInfo?.worldState) {
-			return worldInfo.worldState;
-		}
-
-		// Migrate legacy format
-		if (worldInfo?.clothes) {
-			return {
-				character: {
-					clothes: worldInfo.clothes.character || [],
-					mood: '',
-					position: ''
-				},
-				user: {
-					clothes: worldInfo.clothes.user || [],
-					position: ''
-				}
-			};
-		}
-
-		return null;
+		return worldInfo?.worldState || null;
 	}
 
 	/**
@@ -118,49 +204,71 @@ class WorldInfoService {
 	}
 
 	/**
-	 * Format world info as text for prompt injection (both character and user)
+	 * Helper: Get a specific attribute from an entity
+	 */
+	getAttribute(worldState: WorldStateData | null, entityName: string, attrName: string): WorldAttribute | undefined {
+		return getAttributeValue(worldState?.[entityName], attrName);
+	}
+
+	/**
+	 * Helper: Get text attribute value
+	 */
+	getTextAttribute(worldState: WorldStateData | null, entityName: string, attrName: string): string {
+		return getTextAttribute(worldState?.[entityName], attrName);
+	}
+
+	/**
+	 * Helper: Get list attribute value
+	 */
+	getListAttribute(worldState: WorldStateData | null, entityName: string, attrName: string): ListItem[] {
+		return getListAttribute(worldState?.[entityName], attrName);
+	}
+
+	/**
+	 * Format a single attribute for prompt text
+	 */
+	private formatAttribute(attr: WorldAttribute): string {
+		if (attr.type === 'text' && typeof attr.value === 'string') {
+			return `${attr.name}: ${attr.value}`;
+		}
+		if (attr.type === 'list' && Array.isArray(attr.value) && attr.value.length > 0) {
+			const items = attr.value
+				.map(item => `  ${item.name}: ${item.description}`)
+				.join('\n');
+			return `${attr.name}:\n${items}`;
+		}
+		return '';
+	}
+
+	/**
+	 * Format entity state for prompt injection
+	 */
+	formatEntityForPrompt(entity: EntityState | undefined, label: string): string {
+		if (!entity?.attributes.length) return '';
+
+		const parts = entity.attributes
+			.map(attr => this.formatAttribute(attr))
+			.filter(s => s);
+
+		return parts.length > 0 ? `${label}:\n${parts.join('\n')}` : '';
+	}
+
+	/**
+	 * Format world info as text for prompt injection (all entities)
 	 */
 	formatWorldInfoForPrompt(worldInfo: WorldInfo | null, characterName?: string, userName?: string): string {
-		if (!worldInfo) return '';
+		if (!worldInfo?.worldState) return '';
 
-		const charLabel = characterName || 'Character';
-		const userLabel = userName || 'User';
 		const parts: string[] = [];
+		const entityLabels: Record<string, string> = {
+			character: characterName || 'Character',
+			user: userName || 'User'
+		};
 
-		const worldState = worldInfo.worldState;
-		if (worldState) {
-			// Character section
-			const charParts: string[] = [];
-			if (worldState.character.mood) {
-				charParts.push(`Mood: ${worldState.character.mood}`);
-			}
-			if (worldState.character.position) {
-				charParts.push(`Position: ${worldState.character.position}`);
-			}
-			if (worldState.character.clothes.length > 0) {
-				const clothes = worldState.character.clothes
-					.map(item => `  ${item.name}: ${item.description}`)
-					.join('\n');
-				charParts.push(`Clothing:\n${clothes}`);
-			}
-			if (charParts.length > 0) {
-				parts.push(`${charLabel}:\n${charParts.join('\n')}`);
-			}
-
-			// User section
-			const userParts: string[] = [];
-			if (worldState.user.position) {
-				userParts.push(`Position: ${worldState.user.position}`);
-			}
-			if (worldState.user.clothes.length > 0) {
-				const clothes = worldState.user.clothes
-					.map(item => `  ${item.name}: ${item.description}`)
-					.join('\n');
-				userParts.push(`Clothing:\n${clothes}`);
-			}
-			if (userParts.length > 0) {
-				parts.push(`${userLabel}:\n${userParts.join('\n')}`);
-			}
+		for (const [entityName, entity] of Object.entries(worldInfo.worldState)) {
+			const label = entityLabels[entityName] || entityName;
+			const formatted = this.formatEntityForPrompt(entity, label);
+			if (formatted) parts.push(formatted);
 		}
 
 		return parts.join('\n\n');
@@ -170,77 +278,20 @@ class WorldInfoService {
 	 * Format only character state for prompt injection
 	 */
 	formatCharacterStateForPrompt(worldInfo: WorldInfo | null, characterName?: string): string {
-		const worldState = worldInfo?.worldState;
-		if (!worldState?.character) return '';
-
-		const charLabel = characterName || 'Character';
-		const parts: string[] = [];
-
-		if (worldState.character.mood) {
-			parts.push(`Mood: ${worldState.character.mood}`);
-		}
-		if (worldState.character.position) {
-			parts.push(`Position: ${worldState.character.position}`);
-		}
-		if (worldState.character.clothes.length > 0) {
-			const clothes = worldState.character.clothes
-				.map(item => `  ${item.name}: ${item.description}`)
-				.join('\n');
-			parts.push(`Clothing:\n${clothes}`);
-		}
-
-		return parts.length > 0 ? `${charLabel}:\n${parts.join('\n')}` : '';
-	}
-
-	/**
-	 * Format only character clothes for prompt injection (backwards compat)
-	 */
-	formatCharacterClothesForPrompt(worldInfo: WorldInfo | null, characterName?: string): string {
-		const worldState = worldInfo?.worldState;
-		if (!worldState?.character?.clothes?.length) return '';
-
-		const charLabel = characterName || 'Character';
-		const charClothes = worldState.character.clothes
-			.map(item => `  ${item.name}: ${item.description}`)
-			.join('\n');
-		return `${charLabel}'s clothing:\n${charClothes}`;
+		return this.formatEntityForPrompt(
+			worldInfo?.worldState?.character,
+			characterName || 'Character'
+		);
 	}
 
 	/**
 	 * Format only user state for prompt injection
 	 */
 	formatUserStateForPrompt(worldInfo: WorldInfo | null, userName?: string): string {
-		const worldState = worldInfo?.worldState;
-		if (!worldState?.user) return '';
-
-		const userLabel = userName || 'User';
-		const parts: string[] = [];
-
-		if (worldState.user.position) {
-			parts.push(`Position: ${worldState.user.position}`);
-		}
-		if (worldState.user.clothes.length > 0) {
-			const clothes = worldState.user.clothes
-				.map(item => `  ${item.name}: ${item.description}`)
-				.join('\n');
-			parts.push(`Clothing:\n${clothes}`);
-		}
-
-		return parts.length > 0 ? `${userLabel}:\n${parts.join('\n')}` : '';
-	}
-
-	/**
-	 * Format only user clothes for prompt injection (backwards compat)
-	 */
-	formatUserClothesForPrompt(worldInfo: WorldInfo | null, userName?: string): string {
-		const worldState = worldInfo?.worldState;
-		if (!worldState?.user?.clothes?.length) return '';
-
-		const userLabel = userName || 'User';
-		const userClothes = worldState.user.clothes
-			.map(item => `  ${item.name}: ${item.description}`)
-			.join('\n');
-		return `${userLabel}'s clothing:\n${userClothes}`;
+		return this.formatEntityForPrompt(
+			worldInfo?.worldState?.user,
+			userName || 'User'
+		);
 	}
 }
 

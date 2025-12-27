@@ -1,9 +1,24 @@
 import { imageLlmSettingsService } from './imageLlmSettingsService';
 import { callLlm } from './llmCallService';
 import { personaService } from './personaService';
-import { worldInfoService } from './worldInfoService';
+import { worldInfoService, type WorldInfo } from './worldInfoService';
 import fs from 'fs/promises';
 import path from 'path';
+
+/**
+ * Helper to extract clothes text from world info for a specific entity
+ */
+function formatClothesForPrompt(worldInfo: WorldInfo | null, entityName: string): string {
+	const entity = worldInfo?.worldState?.[entityName];
+	if (!entity?.attributes) return '';
+
+	const clothesAttr = entity.attributes.find(a => a.name === 'clothes' && a.type === 'list');
+	if (!clothesAttr || !Array.isArray(clothesAttr.value)) return '';
+
+	return clothesAttr.value
+		.map((item: { name: string; description: string }) => `${item.name}: ${item.description}`)
+		.join(', ');
+}
 
 const TAG_LIBRARY_DIR = 'data';
 const PROMPTS_DIR = 'data/prompts';
@@ -139,8 +154,8 @@ class ImageTagGenerationService {
 
 			const userName = userInfo.name;
 			const worldText = worldInfoService.formatWorldInfoForPrompt(worldInfo, characterName, userName);
-			const charClothesText = worldInfoService.formatCharacterClothesForPrompt(worldInfo, characterName);
-			const userClothesText = worldInfoService.formatUserClothesForPrompt(worldInfo, userName);
+			const charClothesText = formatClothesForPrompt(worldInfo, 'character');
+			const userClothesText = formatClothesForPrompt(worldInfo, 'user');
 
 			if (tagLibrary) {
 				console.log(`🎨 Loaded tag library for user ${userId} (${tagLibrary.split('\n').length} lines)`);
