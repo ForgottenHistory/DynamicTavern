@@ -83,6 +83,35 @@ The chat system uses a scene + narrator paradigm where multiple characters can p
 - `removeCharacterFromScene(conversationId, characterId)` - Remove character
 - `getPrimaryCharacter(conversationId)` - Get responding character
 
+### World State System
+
+Tracks dynamic state for characters and environment (mood, position, clothes, etc.) displayed in a collapsible sidebar panel.
+
+**Configuration Files:**
+- `data/config/world_attributes.json` - Defines what attributes to track per entity type
+- `data/prompts/world_generation.txt` - LLM prompt template for generating state
+
+**Attribute Types:**
+| Type | Value | Example |
+|------|-------|---------|
+| `text` | Single string | mood: "cheerful and relaxed" |
+| `list` | Array of {name, description} | clothes: [{name: "dress", description: "blue sundress"}] |
+
+**Adding New Attributes:**
+1. Add to `data/config/world_attributes.json` under the appropriate entity (`character` or `user`)
+2. Add to `data/prompts/world_generation.txt` output format and example
+3. Optionally add icon in `ChatWorldPanel.svelte` `getAttributeIcon()` function
+
+**Key Services:**
+- `worldStateGenerationService` (in `clothesGenerationService.ts`) - Generates state via Content LLM
+- `worldInfoService.ts` - CRUD for world state in database (`conversations.worldState` JSON column)
+
+**Auto-Generation Settings** (in `users` table):
+- `autoWorldStateEnabled` - Generate on new chat start
+- `autoWorldStateMinMessages` / `autoWorldStateMaxMessages` - Periodic regeneration range
+
+**UI Component:** `ChatWorldPanel.svelte` - Collapsible sidebar with entity sections, expandable list items, and "look at" action buttons.
+
 ### Multi-LLM Architecture
 
 Four separate LLM configurations, each with its own settings service:

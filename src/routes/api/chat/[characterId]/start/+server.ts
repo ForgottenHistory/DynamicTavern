@@ -1,12 +1,14 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { conversations, messages, characters } from '$lib/server/db/schema';
+import { conversations, messages, characters, users } from '$lib/server/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { scenarioService } from '$lib/server/services/scenarioService';
 import { contentLlmService } from '$lib/server/services/contentLlmService';
 import { personaService } from '$lib/server/services/personaService';
 import { sceneService } from '$lib/server/services/sceneService';
 import { generateSceneNarration } from '$lib/server/llm';
+import { worldStateGenerationService } from '$lib/server/services/clothesGenerationService';
+import { worldInfoService } from '$lib/server/services/worldInfoService';
 
 // POST - Start a new chat with optional scenario
 export const POST: RequestHandler = async ({ params, cookies, request }) => {
@@ -118,6 +120,29 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 			senderName: 'Narrator',
 			reasoning: narratorContent.reasoning
 		});
+
+		// Check if auto world state is enabled and generate it
+		const user = await db.query.users.findFirst({
+			where: eq(users.id, parseInt(userId))
+		});
+
+		if (user?.autoWorldStateEnabled && user?.worldSidebarEnabled) {
+			try {
+				const userInfo = await personaService.getActiveUserInfo(parseInt(userId));
+				const worldState = await worldStateGenerationService.generateWorldState({
+					characterName: character.name,
+					characterDescription: character.description || data.description || '',
+					scenario: scenarioContent || data.scenario || '',
+					userName: userInfo.name,
+					chatHistory: narratorContent.content // Use narrator intro as context
+				});
+				await worldInfoService.updateWorldState(conversation.id, worldState);
+				console.log('🌍 Auto-generated world state for new chat');
+			} catch (error) {
+				console.error('Failed to auto-generate world state:', error);
+				// Don't fail the chat start if world state fails
+			}
+		}
 
 		// Insert character greeting(s)
 		if (useStandardGreeting) {
