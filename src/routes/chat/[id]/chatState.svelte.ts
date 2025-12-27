@@ -75,6 +75,15 @@ export function createChatState(options: ChatStateOptions) {
 	let showPostHistoryModal = $state(false);
 	let postHistorySaving = $state(false);
 
+	// Scene characters (multi-character support)
+	interface SceneCharacter {
+		id: number;
+		name: string;
+		thumbnailData: string | null;
+		imageData: string | null;
+	}
+	let sceneCharacters = $state<SceneCharacter[]>([]);
+
 	// Track character changes
 	let previousCharacterId: number | null = null;
 
@@ -171,6 +180,28 @@ export function createChatState(options: ChatStateOptions) {
 		character = await api.loadCharacter(options.characterId);
 	}
 
+	async function loadSceneCharacters() {
+		if (!conversationId) {
+			sceneCharacters = [];
+			return;
+		}
+		try {
+			const response = await fetch(`/api/chat/${conversationId}/characters`);
+			if (response.ok) {
+				const data = await response.json();
+				sceneCharacters = (data.active || []).map((c: SceneCharacter) => ({
+					id: c.id,
+					name: c.name,
+					thumbnailData: c.thumbnailData,
+					imageData: c.imageData
+				}));
+			}
+		} catch (error) {
+			console.error('Failed to load scene characters:', error);
+			sceneCharacters = [];
+		}
+	}
+
 	async function loadConversation() {
 		loading = true;
 		try {
@@ -183,6 +214,8 @@ export function createChatState(options: ChatStateOptions) {
 
 			if (conversationId) {
 				joinConversation(conversationId);
+				// Load scene characters for the conversation
+				await loadSceneCharacters();
 				// Load saved clothes for existing conversation - Legacy feature disabled
 				// clothesActions.loadClothes();
 			}
@@ -340,6 +373,7 @@ export function createChatState(options: ChatStateOptions) {
 		get imageModalTags() { return imageModalTags; },
 		get imageModalType() { return imageModalType; },
 		get hasAssistantMessages() { return hasAssistantMessages; },
+		get sceneCharacters() { return sceneCharacters; },
 		get showPostHistoryModal() { return showPostHistoryModal; },
 		set showPostHistoryModal(value: boolean) { showPostHistoryModal = value; },
 		get postHistorySaving() { return postHistorySaving; },

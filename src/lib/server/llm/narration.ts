@@ -9,6 +9,7 @@ import { db } from '../db';
 import { messages, conversations } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
 import type { Message, Character, LlmSettings } from '../db/schema';
+import type { LlmSettingsData } from '../services/llmSettingsFileService';
 import {
 	loadNarrationPromptFromFile,
 	loadWritingStyle,
@@ -16,6 +17,9 @@ import {
 	type NarrationType
 } from './promptUtils';
 import type { ChatCompletionResult } from './chatGeneration';
+
+// Type that accepts both old DB-based settings and new file-based settings
+type LlmSettingsLike = LlmSettings | LlmSettingsData;
 
 export interface ItemContext {
 	owner: string;
@@ -37,16 +41,18 @@ export interface SceneContext {
  * @param conversationId - Optional conversation ID for world info lookup
  * @param itemContext - Optional item context for look_item action
  * @param scenarioOverride - Optional scenario override from conversation (takes precedence over character card)
+ * @param userId - Optional user ID for persona/lorebook lookup (required for file-based settings)
  * @returns Generated narration content and reasoning
  */
 export async function generateNarration(
 	conversationHistory: Message[],
 	character: Character,
-	settings: LlmSettings,
+	settings: LlmSettingsLike,
 	narrateType: NarrationType,
 	conversationId?: number,
 	itemContext?: ItemContext,
-	scenarioOverride?: string | null
+	scenarioOverride?: string | null,
+	userId?: number
 ): Promise<ChatCompletionResult> {
 	// Parse character card data
 	let characterData: any = {};
@@ -60,9 +66,15 @@ export async function generateNarration(
 		throw new Error('Invalid character card data');
 	}
 
-	// Get active user info
-	const userInfo = await personaService.getActiveUserInfo(settings.userId);
-	const userName = userInfo.name;
+	// Get effective userId - from parameter or from DB-based settings
+	const effectiveUserId = userId ?? ('userId' in settings ? settings.userId : undefined);
+
+	// Get active user info (default to 'User' if no userId available)
+	let userName = 'User';
+	if (effectiveUserId !== undefined) {
+		const userInfo = await personaService.getActiveUserInfo(effectiveUserId);
+		userName = userInfo.name;
+	}
 
 	// Load narration prompt from file
 	const basePrompt = await loadNarrationPromptFromFile(narrateType);
@@ -137,7 +149,7 @@ export async function generateNarration(
 	// Call LLM service
 	const response = await llmService.createChatCompletion({
 		messages: formattedMessages,
-		userId: settings.userId,
+		userId: effectiveUserId,
 		model: settings.model,
 		temperature: settings.temperature,
 		maxTokens: settings.maxTokens

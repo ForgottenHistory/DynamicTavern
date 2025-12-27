@@ -12,7 +12,7 @@ export interface MessageActions {
 	sendMessage: (userMessage: string) => Promise<void>;
 	generateResponse: () => Promise<void>;
 	impersonate: (style?: api.ImpersonateStyle) => Promise<void>;
-	handleSceneAction: (actionType: api.SceneActionType, itemContext?: api.ItemContext) => Promise<void>;
+	handleSceneAction: (actionType: api.SceneActionType, context?: { characterId?: number; characterName?: string } | api.ItemContext) => Promise<void>;
 	swipeMessage: (messageId: number, direction: 'left' | 'right') => Promise<void>;
 	regenerateLastMessage: () => Promise<void>;
 	deleteMessageAndBelow: (messageId: number, messageIndex: number) => Promise<void>;
@@ -75,12 +75,26 @@ export function createMessageActions(
 		}
 	}
 
-	async function handleSceneAction(actionType: api.SceneActionType, itemContext?: api.ItemContext) {
-		if (getState().sending || !options.conversationId()) return;
+	async function handleSceneAction(
+		actionType: api.SceneActionType,
+		context?: { characterId?: number; characterName?: string } | api.ItemContext
+	) {
+		const convId = options.conversationId();
+		if (getState().sending || !convId) return;
 		setState({ sending: true });
 
 		try {
-			const success = await api.triggerSceneAction(options.characterId, actionType, itemContext);
+			// Determine if this is item context or character context
+			let itemContext: api.ItemContext | undefined;
+			let characterContext: api.CharacterContext | undefined;
+
+			if (context && 'itemName' in context) {
+				itemContext = context as api.ItemContext;
+			} else if (context && 'characterId' in context && context.characterId && context.characterName) {
+				characterContext = { characterId: context.characterId, characterName: context.characterName };
+			}
+
+			const success = await api.triggerSceneAction(options.characterId, actionType, itemContext, characterContext, convId);
 			if (!success) {
 				alert('Failed to execute action');
 			}

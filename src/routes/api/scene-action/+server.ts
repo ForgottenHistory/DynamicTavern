@@ -1,28 +1,30 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { conversations, messages, characters, llmSettings } from '$lib/server/db/schema';
+import { conversations, messages, characters } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { generateNarration, type NarrationType } from '$lib/server/llm';
 import { emitMessage, emitTyping } from '$lib/server/socket';
 import type { SceneActionType } from '$lib/types/chat';
+import { llmSettingsService } from '$lib/server/services/llmSettingsService';
 
 // POST - Trigger a scene action (generates a system narration)
-export const POST: RequestHandler = async ({ params, request, cookies }) => {
+export const POST: RequestHandler = async ({ request, cookies }) => {
 	const userId = cookies.get('userId');
 	if (!userId) {
 		return json({ error: 'Not authenticated' }, { status: 401 });
 	}
 
-	const characterId = parseInt(params.characterId!);
-	if (isNaN(characterId)) {
-		return json({ error: 'Invalid character ID' }, { status: 400 });
-	}
-
 	try {
-		const { actionType, itemContext } = await request.json() as {
+		const { actionType, itemContext, characterId, conversationId } = await request.json() as {
 			actionType: SceneActionType;
 			itemContext?: { owner: string; itemName: string; itemDescription: string };
+			characterId?: number;
+			conversationId: number;
 		};
+
+		if (!conversationId) {
+			return json({ error: 'Conversation ID required' }, { status: 400 });
+		}
 
 		const validTypes: SceneActionType[] = ['look_character', 'look_scene', 'narrate', 'look_item'];
 		if (!actionType || !validTypes.includes(actionType)) {
@@ -34,28 +36,32 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 			return json({ error: 'Item context required for look_item action' }, { status: 400 });
 		}
 
-		// Find active conversation
+		// Find conversation by ID
 		const [conversation] = await db
 			.select()
 			.from(conversations)
 			.where(
 				and(
-					eq(conversations.userId, parseInt(userId)),
-					eq(conversations.characterId, characterId),
-					eq(conversations.isActive, true)
+					eq(conversations.id, conversationId),
+					eq(conversations.userId, parseInt(userId))
 				)
 			)
 			.limit(1);
 
 		if (!conversation) {
-			return json({ error: 'No active conversation' }, { status: 404 });
+			return json({ error: 'Conversation not found' }, { status: 404 });
 		}
 
-		// Get character
+		// Get target character - use characterId from body if provided, otherwise use conversation's primary character
+		const targetCharacterId = characterId ?? conversation.primaryCharacterId ?? conversation.characterId;
+		if (!targetCharacterId) {
+			return json({ error: 'No character specified' }, { status: 400 });
+		}
+
 		const [character] = await db
 			.select()
 			.from(characters)
-			.where(eq(characters.id, characterId))
+			.where(eq(characters.id, targetCharacterId))
 			.limit(1);
 
 		if (!character) {
@@ -69,16 +75,8 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 			.where(eq(messages.conversationId, conversation.id))
 			.orderBy(messages.createdAt);
 
-		// Get LLM settings
-		const [settings] = await db
-			.select()
-			.from(llmSettings)
-			.where(eq(llmSettings.userId, parseInt(userId)))
-			.limit(1);
-
-		if (!settings) {
-			return json({ error: 'LLM settings not found' }, { status: 404 });
-		}
+		// Get LLM settings from file service
+		const settings = llmSettingsService.getSettings();
 
 		// Emit typing indicator
 		emitTyping(conversation.id, true);
@@ -86,7 +84,6 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 		let result: { content: string; reasoning: string | null };
 		try {
 			// Generate narration using the dedicated function
-			// For look_item, pass the narration type as 'look_item' with item context
 			const narrateType: NarrationType = actionType === 'look_item' ? 'look_item' : actionType;
 			result = await generateNarration(
 				conversationHistory,
@@ -95,7 +92,8 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 				narrateType,
 				conversation.id,
 				itemContext,
-				conversation.scenario // pass scenario override from conversation
+				conversation.scenario,
+				parseInt(userId)
 			);
 		} catch (genError) {
 			emitTyping(conversation.id, false);
@@ -105,21 +103,21 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 		// Stop typing indicator
 		emitTyping(conversation.id, false);
 
-		// Save as system message
-		const [systemNarration] = await db
+		// Save as narrator message
+		const [narratorMessage] = await db
 			.insert(messages)
 			.values({
 				conversationId: conversation.id,
-				role: 'system',
+				role: 'narrator',
 				content: result.content,
-				senderName: 'System',
+				senderName: 'Narrator',
 				senderAvatar: null,
 				reasoning: result.reasoning
 			})
 			.returning();
 
-		// Emit system narration via Socket.IO
-		emitMessage(conversation.id, systemNarration);
+		// Emit narrator message via Socket.IO
+		emitMessage(conversation.id, narratorMessage);
 
 		return json({ success: true });
 	} catch (error) {

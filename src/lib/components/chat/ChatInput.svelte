@@ -3,20 +3,28 @@
 
 	export type { SceneActionType, ImpersonateStyle };
 
+	interface SceneCharacter {
+		id: number;
+		name: string;
+		thumbnailData: string | null;
+		imageData: string | null;
+	}
+
 	interface Props {
 		disabled: boolean;
 		hasAssistantMessages: boolean;
 		impersonating: boolean;
 		generatingImage: boolean;
+		sceneCharacters?: SceneCharacter[];
 		onSend: (message: string) => void;
 		onGenerate: () => void;
 		onRegenerate: () => void;
 		onImpersonate: (style: ImpersonateStyle) => void;
 		onGenerateImage: (type: 'character' | 'user' | 'scene' | 'raw') => void;
-		onSceneAction: (type: SceneActionType) => void;
+		onSceneAction: (type: SceneActionType, context?: { characterId?: number; characterName?: string }) => void;
 	}
 
-	let { disabled, hasAssistantMessages, impersonating, generatingImage, onSend, onGenerate, onRegenerate, onImpersonate, onGenerateImage, onSceneAction }: Props = $props();
+	let { disabled, hasAssistantMessages, impersonating, generatingImage, sceneCharacters = [], onSend, onGenerate, onRegenerate, onImpersonate, onGenerateImage, onSceneAction }: Props = $props();
 
 	let input = $state('');
 	let showImageDropdown = $state(false);
@@ -32,9 +40,13 @@
 
 	function resizeTextarea() {
 		if (!textareaRef) return;
-		textareaRef.style.height = 'auto';
+		// Reset to minimum height to get accurate scrollHeight
+		textareaRef.style.height = '0px';
 		const maxHeight = 200; // Max height in pixels (roughly 8 lines)
-		textareaRef.style.height = Math.min(textareaRef.scrollHeight, maxHeight) + 'px';
+		const newHeight = Math.min(textareaRef.scrollHeight, maxHeight);
+		textareaRef.style.height = newHeight + 'px';
+		// Enable scrolling only when at max height
+		textareaRef.style.overflowY = newHeight >= maxHeight ? 'auto' : 'hidden';
 	}
 
 	function handleInput() {
@@ -69,9 +81,9 @@
 		onGenerateImage(type);
 	}
 
-	function handleSceneAction(type: SceneActionType) {
+	function handleSceneAction(type: SceneActionType, context?: { characterId?: number; characterName?: string }) {
 		showActionsDropdown = false;
-		onSceneAction(type);
+		onSceneAction(type, context);
 	}
 
 	function handleImpersonate(style: ImpersonateStyle) {
@@ -237,17 +249,23 @@
 					</svg>
 				</button>
 				{#if showActionsDropdown}
-					<div class="absolute bottom-full left-0 mb-2 w-48 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-xl shadow-xl overflow-hidden z-50">
-						<button
-							onclick={() => handleSceneAction('look_character')}
-							class="w-full px-4 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition flex items-center gap-3"
-						>
-							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-							</svg>
-							Look at Character
-						</button>
+					<div class="absolute bottom-full left-0 mb-2 w-48 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-xl shadow-xl overflow-hidden z-50 max-h-80 overflow-y-auto">
+						<!-- Character-specific Look buttons -->
+						{#if sceneCharacters.length > 0}
+							{#each sceneCharacters as char (char.id)}
+								<button
+									onclick={() => handleSceneAction('look_character', { characterId: char.id, characterName: char.name })}
+									class="w-full px-4 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition flex items-center gap-3"
+								>
+									<svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+									</svg>
+									<span class="truncate">Look at {char.name}</span>
+								</button>
+							{/each}
+							<div class="border-t border-[var(--border-primary)]"></div>
+						{/if}
 						<button
 							onclick={() => handleSceneAction('look_scene')}
 							class="w-full px-4 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition flex items-center gap-3"
@@ -278,7 +296,7 @@
 			placeholder={impersonating ? "Generating..." : "Type a message..."}
 			disabled={impersonating}
 			rows="1"
-			class="flex-1 px-4 py-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] placeholder-[var(--text-muted)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] resize-none disabled:opacity-50 overflow-hidden"
+			class="flex-1 px-4 py-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] placeholder-[var(--text-muted)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] resize-none disabled:opacity-50"
 			style="scrollbar-width: none; -ms-overflow-style: none;"
 		></textarea>
 		<button

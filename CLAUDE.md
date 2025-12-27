@@ -11,6 +11,8 @@ AI-powered character chat application enabling users to create and chat with AI 
 - Don't add features that were not part of original request
 - Don't hardcode in arbitrary limits
 - Styling needs to be consistent. Check other similar components first before implementation.
+- You can use Python for tools
+- **IMPORTANT: Before writing new code, always check how similar existing code handles the same task.** Look at existing endpoints/components that do similar things and follow their patterns. Don't assume - read the code first.
 
 ## Tech Stack
 
@@ -83,7 +85,7 @@ The chat system uses a scene + narrator paradigm where multiple characters can p
 
 ### Multi-LLM Architecture
 
-Four separate LLM configurations, each with its own settings table and service:
+Four separate LLM configurations, each with its own settings service:
 
 | LLM Type | Purpose | Settings Service |
 |----------|---------|------------------|
@@ -91,6 +93,8 @@ Four separate LLM configurations, each with its own settings table and service:
 | **Decision** | Pre-processing decisions before content | `decisionEngineSettingsService.ts` |
 | **Content** | Content creation/generation | `contentLlmSettingsService.ts` |
 | **Image** | Generate Danbooru tags for SD | `imageLlmSettingsService.ts` |
+
+**IMPORTANT:** LLM settings are stored in **files** via `llmSettingsFileService.ts`, NOT in the database. The database `llmSettings` table exists but is not used. Always use the service classes (e.g., `llmSettingsService.getSettings()`) to fetch settings.
 
 ### LLM Integration (`src/lib/server/`)
 

@@ -126,6 +126,7 @@
 						hasAssistantMessages={state.hasAssistantMessages}
 						impersonating={state.impersonating}
 						generatingImage={state.generatingImage}
+						sceneCharacters={state.sceneCharacters}
 						onSend={state.sendMessage}
 						onGenerate={state.generateResponse}
 						onRegenerate={state.regenerateLastMessage}

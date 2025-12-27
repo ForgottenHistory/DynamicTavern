@@ -322,16 +322,29 @@ export interface ItemContext {
 	itemDescription: string;
 }
 
+export interface CharacterContext {
+	characterId: number;
+	characterName: string;
+}
+
 export async function triggerSceneAction(
 	characterId: number,
 	actionType: SceneActionType,
-	itemContext?: ItemContext
+	itemContext?: ItemContext,
+	characterContext?: CharacterContext,
+	conversationId?: number
 ): Promise<boolean> {
+	if (!conversationId) {
+		console.error('No conversation ID provided for scene action');
+		return false;
+	}
 	try {
-		const response = await fetch(`/api/chat/${characterId}/action`, {
+		// Use target character ID if provided (for "Look at [Character]" actions)
+		const targetCharacterId = characterContext?.characterId ?? characterId;
+		const response = await fetch('/api/scene-action', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ actionType, itemContext })
+			body: JSON.stringify({ actionType, itemContext, characterId: targetCharacterId, conversationId })
 		});
 		return response.ok;
 	} catch (error) {
