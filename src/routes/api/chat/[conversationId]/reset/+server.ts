@@ -10,6 +10,9 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 		return json({ error: 'Not authenticated' }, { status: 401 });
 	}
 
+	if (!params.conversationId) {
+		return json({ error: 'Conversation ID required' }, { status: 400 });
+	}
 	const conversationId = parseInt(params.conversationId);
 	if (isNaN(conversationId)) {
 		return json({ error: 'Invalid conversation ID' }, { status: 400 });

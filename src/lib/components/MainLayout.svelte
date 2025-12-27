@@ -1,10 +1,10 @@
 <script lang="ts">
-	import type { User, Character } from '$lib/server/db/schema';
+	import type { SafeUser, Character } from '$lib/server/db/schema';
 	import { onMount } from 'svelte';
 	import { getCharactersCache, setCharactersCache, isCharactersCacheLoaded } from '$lib/stores/characters';
 
 	interface Props {
-		user: User;
+		user: SafeUser;
 		currentPath: string;
 	}
 

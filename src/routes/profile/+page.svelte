@@ -24,6 +24,7 @@
 		name: string;
 		description: string | null;
 		avatarData: string | null;
+		avatarThumbnail: string | null;
 		createdAt: Date;
 	}
 	let personas = $state<Persona[]>([]);

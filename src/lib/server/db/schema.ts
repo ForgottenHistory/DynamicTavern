@@ -300,6 +300,7 @@ export const sceneParticipants = sqliteTable('scene_participants', {
 });
 
 export type User = typeof users.$inferSelect;
+export type SafeUser = Omit<User, 'passwordHash'>; // User without sensitive data
 export type NewUser = typeof users.$inferInsert;
 export type UserPersona = typeof userPersonas.$inferSelect;
 export type NewUserPersona = typeof userPersonas.$inferInsert;
