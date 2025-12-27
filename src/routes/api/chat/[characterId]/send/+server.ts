@@ -1,11 +1,12 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { conversations, messages, characters, llmSettings } from '$lib/server/db/schema';
+import { conversations, messages, characters } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { generateChatCompletion } from '$lib/server/llm';
 import { emitMessage, emitTyping } from '$lib/server/socket';
 import { personaService } from '$lib/server/services/personaService';
 import { sceneService } from '$lib/server/services/sceneService';
+import { llmSettingsFileService } from '$lib/server/services/llmSettingsFileService';
 
 // POST - Send a message and get AI response
 export const POST: RequestHandler = async ({ params, request, cookies }) => {
@@ -100,13 +101,8 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 			.where(eq(messages.conversationId, conversation.id))
 			.orderBy(messages.createdAt);
 
-		// Get LLM settings
-		const [settings] = await db
-			.select()
-			.from(llmSettings)
-			.where(eq(llmSettings.userId, parseInt(userId)))
-			.limit(1);
-
+		// Get LLM settings from file
+		const settings = llmSettingsFileService.getSettings('chat');
 		if (!settings) {
 			return json({ error: 'LLM settings not found' }, { status: 404 });
 		}

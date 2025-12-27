@@ -1,12 +1,13 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { messages, conversations, characters, llmSettings } from '$lib/server/db/schema';
+import { messages, conversations, characters } from '$lib/server/db/schema';
 import { eq, and, lt } from 'drizzle-orm';
 import { generateChatCompletion } from '$lib/server/llm';
 import { emitTyping } from '$lib/server/socket';
 import { sdService } from '$lib/server/services/sdService';
 import { sdSettingsService } from '$lib/server/services/sdSettingsService';
 import { sceneService } from '$lib/server/services/sceneService';
+import { llmSettingsFileService } from '$lib/server/services/llmSettingsFileService';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -80,13 +81,8 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 			))
 			.orderBy(messages.createdAt);
 
-		// Get LLM settings
-		const [settings] = await db
-			.select()
-			.from(llmSettings)
-			.where(eq(llmSettings.userId, parseInt(userId)))
-			.limit(1);
-
+		// Get LLM settings from file
+		const settings = llmSettingsFileService.getSettings('chat');
 		if (!settings) {
 			return json({ error: 'LLM settings not found' }, { status: 404 });
 		}
