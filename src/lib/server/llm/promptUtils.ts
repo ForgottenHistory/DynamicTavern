@@ -24,6 +24,7 @@ export const DEFAULT_NARRATION_PROMPTS: Record<string, string> = {
 	look_scene: `You are a narrator. Briefly describe the current environment. Keep it to 2-3 sentences.`,
 	narrate: `You are a narrator. Briefly describe what is happening in the scene. Keep it to 2-3 sentences.`,
 	look_item: `You are a narrator. Briefly describe {{item_owner}}'s {{item_name}} in detail. Keep it to 2-3 sentences.`,
+	explore_scene: `You are a narrator. {{user}} looks around and explores the environment. Describe something interesting they notice or discover - an object, detail, or feature of the scene they hadn't focused on before. Keep it to 2-3 sentences.`,
 	enter_scene: `You are a narrator. {{character_name}} has just entered the scene. Briefly describe their entrance in 1-2 sentences.`,
 	leave_scene: `You are a narrator. {{character_name}} is leaving the scene. Briefly describe their departure in 1-2 sentences.`,
 	scene_intro: `You are a narrator. The following characters are present: {{character_names}}. Describe the scene opening in 2-3 sentences.`
@@ -34,7 +35,7 @@ export const SYSTEM_PROMPT_FILE = path.join(PROMPTS_DIR, 'chat_system.txt');
 export const IMPERSONATE_PROMPT_FILE = path.join(PROMPTS_DIR, 'chat_impersonate.txt');
 export const WRITING_STYLE_FILE = path.join(PROMPTS_DIR, 'writing_style.txt');
 
-export type NarrationType = 'look_character' | 'look_scene' | 'narrate' | 'look_item' | 'enter_scene' | 'leave_scene' | 'scene_intro';
+export type NarrationType = 'look_character' | 'look_scene' | 'narrate' | 'look_item' | 'explore_scene' | 'enter_scene' | 'leave_scene' | 'scene_intro';
 
 export interface TemplateVariables {
 	char: string;

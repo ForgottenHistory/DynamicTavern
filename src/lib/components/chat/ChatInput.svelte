@@ -110,6 +110,66 @@
 <div class="bg-[var(--bg-secondary)] border-t border-[var(--border-primary)] px-6 py-4">
 	<div class="max-w-4xl mx-auto flex items-end gap-3">
 		<div class="flex items-center">
+			<!-- Scene Actions Dropdown -->
+			<div class="relative actions-dropdown-container">
+				<button
+					onclick={() => (showActionsDropdown = !showActionsDropdown)}
+					{disabled}
+					class="p-3 text-[var(--text-muted)] hover:text-[var(--warning)] disabled:opacity-30 disabled:cursor-not-allowed transition rounded-lg hover:bg-[var(--bg-tertiary)]"
+					title="Scene Actions"
+				>
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+					</svg>
+				</button>
+				{#if showActionsDropdown}
+					<div class="absolute bottom-full left-0 mb-2 w-48 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-xl shadow-xl overflow-hidden z-50 max-h-80 overflow-y-auto">
+						<!-- Character-specific Look buttons -->
+						{#if sceneCharacters.length > 0}
+							{#each sceneCharacters as char (char.id)}
+								<button
+									onclick={() => handleSceneAction('look_character', { characterId: char.id, characterName: char.name })}
+									class="w-full px-4 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition flex items-center gap-3"
+								>
+									<svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+									</svg>
+									<span class="truncate">Look at {char.name}</span>
+								</button>
+							{/each}
+							<div class="border-t border-[var(--border-primary)]"></div>
+						{/if}
+						<button
+							onclick={() => handleSceneAction('look_scene')}
+							class="w-full px-4 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition flex items-center gap-3"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+							</svg>
+							Look at Scene
+						</button>
+						<button
+							onclick={() => handleSceneAction('explore_scene')}
+							class="w-full px-4 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition flex items-center gap-3"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+							</svg>
+							Explore Scene
+						</button>
+						<button
+							onclick={() => handleSceneAction('narrate')}
+							class="w-full px-4 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition flex items-center gap-3"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+							</svg>
+							Narrate Scene
+						</button>
+					</div>
+				{/if}
+			</div>
 			<!-- Impersonate Dropdown -->
 			<div class="relative impersonate-dropdown-container">
 				<button
@@ -236,57 +296,6 @@
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
 				</svg>
 			</button>
-			<!-- Scene Actions Dropdown -->
-			<div class="relative actions-dropdown-container">
-				<button
-					onclick={() => (showActionsDropdown = !showActionsDropdown)}
-					{disabled}
-					class="p-3 text-[var(--text-muted)] hover:text-[var(--warning)] disabled:opacity-30 disabled:cursor-not-allowed transition rounded-lg hover:bg-[var(--bg-tertiary)]"
-					title="Scene Actions"
-				>
-					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-					</svg>
-				</button>
-				{#if showActionsDropdown}
-					<div class="absolute bottom-full left-0 mb-2 w-48 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-xl shadow-xl overflow-hidden z-50 max-h-80 overflow-y-auto">
-						<!-- Character-specific Look buttons -->
-						{#if sceneCharacters.length > 0}
-							{#each sceneCharacters as char (char.id)}
-								<button
-									onclick={() => handleSceneAction('look_character', { characterId: char.id, characterName: char.name })}
-									class="w-full px-4 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition flex items-center gap-3"
-								>
-									<svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-									</svg>
-									<span class="truncate">Look at {char.name}</span>
-								</button>
-							{/each}
-							<div class="border-t border-[var(--border-primary)]"></div>
-						{/if}
-						<button
-							onclick={() => handleSceneAction('look_scene')}
-							class="w-full px-4 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition flex items-center gap-3"
-						>
-							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-							</svg>
-							Look at Scene
-						</button>
-						<button
-							onclick={() => handleSceneAction('narrate')}
-							class="w-full px-4 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition flex items-center gap-3"
-						>
-							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-							</svg>
-							Narrate Scene
-						</button>
-					</div>
-				{/if}
-			</div>
 		</div>
 		<textarea
 			bind:this={textareaRef}

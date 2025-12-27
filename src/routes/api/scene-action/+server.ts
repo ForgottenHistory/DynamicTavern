@@ -26,7 +26,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			return json({ error: 'Conversation ID required' }, { status: 400 });
 		}
 
-		const validTypes: SceneActionType[] = ['look_character', 'look_scene', 'narrate', 'look_item'];
+		const validTypes: SceneActionType[] = ['look_character', 'look_scene', 'narrate', 'look_item', 'explore_scene'];
 		if (!actionType || !validTypes.includes(actionType)) {
 			return json({ error: 'Invalid action type' }, { status: 400 });
 		}
