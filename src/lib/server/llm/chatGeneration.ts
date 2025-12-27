@@ -64,9 +64,11 @@ export async function generateChatCompletion(
 
 	// Get world info if conversation ID provided
 	let worldText = '';
+	let worldState: { character: { mood: string; position: string; clothes: { name: string; description: string }[] }; user: { position: string; clothes: { name: string; description: string }[] } } | null = null;
 	if (conversationId) {
 		const worldInfo = await worldInfoService.getWorldInfo(conversationId);
 		worldText = worldInfoService.formatWorldInfoForPrompt(worldInfo, character.name, userName);
+		worldState = worldInfo?.worldState || null;
 	}
 
 	// Get writing style from file
@@ -80,6 +82,11 @@ export async function generateChatCompletion(
 		})
 		.join('\n\n');
 
+	// Format clothes as a simple list
+	const charClothes = worldState?.character.clothes
+		?.map(item => `${item.name}: ${item.description}`)
+		.join(', ') || '';
+
 	// Prepare template variables
 	// Use character.description (top-level) if available, otherwise fall back to cardData.description
 	// Use scenarioOverride if provided, otherwise fall back to character card scenario
@@ -91,7 +98,12 @@ export async function generateChatCompletion(
 		description: character.description || characterData.description || '',
 		world: worldText,
 		post_history: character.postHistory || '',
-		writing_style: writingStyle
+		writing_style: writingStyle,
+		// World state variables for conditionals
+		world_sidebar: !!worldState,
+		char_mood: worldState?.character.mood || '',
+		char_position: worldState?.character.position || '',
+		char_clothes: charClothes
 	};
 
 	// Replace variables in template

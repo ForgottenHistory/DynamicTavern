@@ -37,6 +37,12 @@ export const WRITING_STYLE_FILE = path.join(PROMPTS_DIR, 'writing_style.txt');
 
 export type NarrationType = 'look_character' | 'look_scene' | 'narrate' | 'look_item' | 'explore_scene' | 'enter_scene' | 'leave_scene' | 'scene_intro';
 
+export interface WorldStateVariables {
+	mood?: string;
+	position?: string;
+	clothes?: string;
+}
+
 export interface TemplateVariables {
 	char: string;
 	user: string;
@@ -46,6 +52,11 @@ export interface TemplateVariables {
 	world?: string;
 	post_history?: string;
 	writing_style?: string;
+	// World state (for conditionals)
+	world_sidebar?: boolean;
+	char_mood?: string;
+	char_position?: string;
+	char_clothes?: string;
 }
 
 /**
@@ -101,13 +112,67 @@ export async function loadNarrationPromptFromFile(type: NarrationType): Promise<
 }
 
 /**
+ * Process conditional blocks in template
+ * Supports: {{#if variable}}...{{/if}} and {{#unless variable}}...{{/unless}}
+ */
+function processConditionals(template: string, variables: Record<string, any>): string {
+	let result = template;
+
+	// Process {{#if variable}}...{{/if}} blocks
+	// Use non-greedy matching and handle nested content
+	const ifRegex = /\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g;
+	result = result.replace(ifRegex, (match, varName, content) => {
+		const value = variables[varName];
+		// Truthy check: exists and not empty string
+		if (value && value !== '') {
+			return content;
+		}
+		return '';
+	});
+
+	// Process {{#unless variable}}...{{/unless}} blocks (inverse of if)
+	const unlessRegex = /\{\{#unless\s+(\w+)\}\}([\s\S]*?)\{\{\/unless\}\}/g;
+	result = result.replace(unlessRegex, (match, varName, content) => {
+		const value = variables[varName];
+		// Show if falsy or empty
+		if (!value || value === '') {
+			return content;
+		}
+		return '';
+	});
+
+	return result;
+}
+
+/**
  * Replace template variables with actual values
+ * Processes conditionals first, then replaces variables
  */
 export function replaceTemplateVariables(
 	template: string,
 	variables: TemplateVariables
 ): string {
-	return template
+	// Build a lookup object for conditionals
+	const lookup: Record<string, any> = {
+		char: variables.char,
+		user: variables.user,
+		personality: variables.personality,
+		scenario: variables.scenario,
+		description: variables.description,
+		world: variables.world,
+		post_history: variables.post_history,
+		writing_style: variables.writing_style,
+		world_sidebar: variables.world_sidebar,
+		char_mood: variables.char_mood,
+		char_position: variables.char_position,
+		char_clothes: variables.char_clothes
+	};
+
+	// Process conditionals first
+	let result = processConditionals(template, lookup);
+
+	// Then replace variables
+	return result
 		.replace(/\{\{char\}\}/g, variables.char)
 		.replace(/\{\{user\}\}/g, variables.user)
 		.replace(/\{\{personality\}\}/g, variables.personality)
@@ -115,5 +180,8 @@ export function replaceTemplateVariables(
 		.replace(/\{\{description\}\}/g, variables.description)
 		.replace(/\{\{world\}\}/g, variables.world || '')
 		.replace(/\{\{post_history\}\}/g, variables.post_history || '')
-		.replace(/\{\{writing_style\}\}/g, variables.writing_style || '');
+		.replace(/\{\{writing_style\}\}/g, variables.writing_style || '')
+		.replace(/\{\{char_mood\}\}/g, variables.char_mood || '')
+		.replace(/\{\{char_position\}\}/g, variables.char_position || '')
+		.replace(/\{\{char_clothes\}\}/g, variables.char_clothes || '');
 }
