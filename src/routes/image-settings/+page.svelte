@@ -13,6 +13,8 @@
 		cfgScale: 7.0,
 		sampler: 'DPM++ 2M',
 		scheduler: 'Karras',
+		width: 832,
+		height: 1216,
 		enableHr: true,
 		hrScale: 1.5,
 		hrUpscaler: 'Latent',
@@ -93,6 +95,8 @@
 			cfgScale: 7.0,
 			sampler: 'DPM++ 2M',
 			scheduler: 'Karras',
+			width: 832,
+			height: 1216,
 			enableHr: true,
 			hrScale: 1.5,
 			hrUpscaler: 'Latent',
@@ -278,6 +282,38 @@
 										type="text"
 										bind:value={settings.scheduler}
 										placeholder="e.g., Karras, Exponential"
+										class="w-full px-4 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+									/>
+								</div>
+							</div>
+
+							<div class="grid grid-cols-2 gap-4">
+								<div>
+									<label for="sd-width" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+										Width
+									</label>
+									<input
+										id="sd-width"
+										type="number"
+										bind:value={settings.width}
+										min={64}
+										max={2048}
+										step={64}
+										class="w-full px-4 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+									/>
+								</div>
+
+								<div>
+									<label for="sd-height" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+										Height
+									</label>
+									<input
+										id="sd-height"
+										type="number"
+										bind:value={settings.height}
+										min={64}
+										max={2048}
+										step={64}
 										class="w-full px-4 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
 									/>
 								</div>

@@ -134,6 +134,8 @@ export const sdSettings = sqliteTable('sd_settings', {
 	cfgScale: real('cfg_scale').notNull().default(7.0),
 	sampler: text('sampler').notNull().default('DPM++ 2M'),
 	scheduler: text('scheduler').notNull().default('Karras'),
+	width: integer('width').notNull().default(832),
+	height: integer('height').notNull().default(1216),
 	enableHr: integer('enable_hr', { mode: 'boolean' }).notNull().default(true),
 	hrScale: real('hr_scale').notNull().default(1.5),
 	hrUpscaler: text('hr_upscaler').notNull().default('Latent'),

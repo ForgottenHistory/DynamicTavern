@@ -46,7 +46,7 @@ const DEFAULT_SETTINGS: SDSettings = {
 	sampler: 'DPM++ 2M',
 	scheduler: 'Karras',
 	width: 832,
-	height: 1152,
+	height: 1216,
 	enableHr: true,
 	hrScale: 1.5,
 	hrUpscaler: 'Latent',

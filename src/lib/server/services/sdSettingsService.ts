@@ -11,6 +11,8 @@ const DEFAULT_SETTINGS = {
 	cfgScale: 7.0,
 	sampler: 'DPM++ 2M',
 	scheduler: 'Karras',
+	width: 832,
+	height: 1216,
 	enableHr: true,
 	hrScale: 1.5,
 	hrUpscaler: 'Latent',
