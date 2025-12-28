@@ -1,12 +1,20 @@
 # DynamicTavern
 
-An AI-powered character chat application with multi-character scenes, dynamic world state tracking, and image generation. Create and chat with AI characters using character cards (V1/V2 format), manage multiple conversations, and configure LLM settings per-engine.
+AI-powered character chat application with multi-character scenes, dynamic world state tracking, and image generation. Create and chat with AI characters using character cards (V1/V2 format), manage multiple conversations, and configure LLM settings per-engine.
 
 Derived from my AI chat template: https://github.com/ForgottenHistory/AI-Chat-Template
 
 Similar RP app for a digital dating experience: https://github.com/ForgottenHistory/Cupid-AI
 
 ![DynamicTavern](images/chat.png)
+
+## Why
+
+SillyTavern is a great project however I find it bloated yet somehow lacking features at times. I need to use various extensions from different creators spread around on discords to have a more enjoyable RP experience, which still feels "patched together" 
+
+Likewise I tried Talemate and was blown away, though it was too complex for me to actually get into.
+
+DynamicTavern is my take on things, simple RP chatting like SillyTavern and dynamic content like Talemate. This is my personal taste, some might agree with my decisions and some might not, that's fine. 
 
 ## Features
 
@@ -120,6 +128,12 @@ npm run check      # Type check
 npm run db:push    # Push schema to database
 npm run db:studio  # Open Drizzle Studio
 ```
+
+## Inspirations
+
+SillyTavern: https://github.com/SillyTavern/SillyTavern
+
+Talemate: https://github.com/vegu-ai/talemate
 
 ## License
 
