@@ -1,12 +1,18 @@
 # DynamicTavern
 
-A personal-use template for AI character chat applications. Designed to either work standalone or serve as a base for forking into other projects.
+An AI-powered character chat application with multi-character scenes, dynamic world state tracking, and image generation. Create and chat with AI characters using character cards (V1/V2 format), manage multiple conversations, and configure LLM settings per-engine.
 
-Derived from an AI dating app I made, check it out: https://github.com/ForgottenHistory/Cupid-AI
+Derived from an AI dating app I made: https://github.com/ForgottenHistory/Cupid-AI
 
 ![DynamicTavern](images/chat.png)
 
 ## Features
+
+### World State Tracking
+
+- **Dynamic State** - Tracks mood, position, clothes, and other attributes for characters and user
+- **Auto-Generation** - Optionally regenerate world state periodically or on demand
+- **Configurable Attributes** - Define what to track via `data/config/world_attributes.json`
 
 ### Character System
 
@@ -29,7 +35,7 @@ Derived from an AI dating app I made, check it out: https://github.com/Forgotten
 - **Swipes** - Generate alternative responses and swipe between them
 - **Impersonate** - Generate responses as the user character
 - **Reasoning Display** - View LLM reasoning/thinking when available
-- **QoL Buttons** - Quality of life features like quick copy
+- **QoL Buttons** - Quick copy, regenerate, and other convenience features
 
 ### Layout & Appearance
 
@@ -41,22 +47,24 @@ Derived from an AI dating app I made, check it out: https://github.com/Forgotten
 
 Separate LLM configurations for different purposes:
 
-- **Chat LLM** - Main conversation engine
-- **Decision LLM** - Determines actions (e.g., when to send images), not used currently though
-- **Content LLM** - Rewrites/generates character metadata
-- **Image LLM** - Generates Danbooru-style tags for image generation
+| LLM Type | Purpose |
+|----------|---------|
+| **Chat** | Main conversation engine |
+| **Decision** | Pre-processing decisions before content |
+| **Content** | Rewrites/generates character metadata, world state |
+| **Image** | Generates Danbooru-style tags for image generation |
 
 ### LLM Configuration
 
 - **LLM Presets** - Save and load LLM configurations
 - **Reasoning Support** - Enable extended thinking for supported models
 - **Provider Support** - OpenRouter and Featherless AI providers
-- **Per-Engine Settings** - Generic LLM settings component for temperature, max tokens, context window, etc
+- **Per-Engine Settings** - Temperature, max tokens, context window, etc.
 
 ### Image Generation
 
 - **Stable Diffusion Integration** - Generate character images via local SD WebUI API
-- **Global Tag Library** - Define tags available for AI to choose from. Creates interesting dynamic images. 
+- **Global Tag Library** - Define tags available for AI to choose from
 - **ADetailer Support** - Optional face enhancement
 
 ### Other Features
@@ -64,20 +72,20 @@ Separate LLM configurations for different purposes:
 - **File-Based Prompts** - Edit system prompts through the UI or directly in `data/prompts/`
 - **Logging** - View last 5 prompts/responses per LLM type for debugging
 
-![DynamicTavern](images/character_profile.png)
-
 ## Tech Stack
 
 - **Framework**: SvelteKit 2 with Svelte 5
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS 4
 - **Database**: SQLite with Drizzle ORM
+- **Real-time**: Socket.IO
 - **LLM Providers**: OpenRouter, Featherless
 - **Image Generation**: Stable Diffusion WebUI API
+- **Image Processing**: Sharp
 
 ## Setup
 
-run.bat does this automatically.
+`run.bat` does this automatically on Windows.
 
 1. Clone the repository
 2. Install dependencies:
@@ -99,6 +107,8 @@ run.bat does this automatically.
    npm run dev
    ```
 
+As for LLMs, personally I use NanoGPT with a mix of Kimi-K2 and GLM-4.7
+
 ## Commands
 
 ```bash
@@ -108,15 +118,6 @@ npm run check      # Type check
 npm run db:push    # Push schema to database
 npm run db:studio  # Open Drizzle Studio
 ```
-
-## Forking
-
-This template is designed to be forked. Key extension points:
-
-- **Add new LLM engines** - Follow the pattern in `src/lib/server/services/`
-- **Custom prompts** - Add files to `data/prompts/` and register in the Prompts page
-- **New character fields** - Extend the schema in `src/lib/server/db/schema.ts`
-- **Additional settings** - Add tables following the existing `*Settings` pattern
 
 ## License
 
