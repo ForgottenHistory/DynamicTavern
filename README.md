@@ -2,7 +2,9 @@
 
 An AI-powered character chat application with multi-character scenes, dynamic world state tracking, and image generation. Create and chat with AI characters using character cards (V1/V2 format), manage multiple conversations, and configure LLM settings per-engine.
 
-Derived from an AI dating app I made: https://github.com/ForgottenHistory/Cupid-AI
+Derived from my AI chat template: https://github.com/ForgottenHistory/AI-Chat-Template
+
+Similar RP app for a digital dating experience: https://github.com/ForgottenHistory/Cupid-AI
 
 ![DynamicTavern](images/chat.png)
 
