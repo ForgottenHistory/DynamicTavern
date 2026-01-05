@@ -89,7 +89,7 @@ Separate LLM configurations for different purposes:
 - **Styling**: Tailwind CSS 4
 - **Database**: SQLite with Drizzle ORM
 - **Real-time**: Socket.IO
-- **LLM Providers**: OpenRouter, Featherless
+- **LLM Providers**: OpenRouter, Featherless, NanoGPT
 - **Image Generation**: Stable Diffusion WebUI API
 - **Image Processing**: Sharp
 
