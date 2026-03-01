@@ -1,5 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { db } from '$lib/server/db';
+import { sandboxSessions } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
 import { sandboxService } from '$lib/server/services/sandboxService';
 import { worldService } from '$lib/server/services/worldService';
 import { generateSandboxNarration } from '$lib/server/llm/sandboxNarration';
@@ -38,6 +41,12 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 
 		const location = worldService.getLocation(world, locationId);
 		const connections = worldService.getConnections(world, locationId);
+
+		// Clear world state for the new location
+		await db
+			.update(sandboxSessions)
+			.set({ worldInfo: null })
+			.where(eq(sandboxSessions.id, sessionId));
 
 		// Generate narrator description of the location
 		const userInfo = await personaService.getActiveUserInfo(parseInt(userId));

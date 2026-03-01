@@ -134,6 +134,7 @@ export function createSandboxState(options: SandboxStateOptions) {
 			character = result.character;
 			messages = result.messages;
 			connections = result.connections;
+			worldState = null;
 			options.onScrollToBottom();
 		} catch (e) {
 			error = 'Failed to move to location';
@@ -361,6 +362,15 @@ export function createSandboxState(options: SandboxStateOptions) {
 		}
 	}
 
+	async function handleClearWorldState() {
+		try {
+			await api.clearWorldState(options.sessionId);
+			worldState = null;
+		} catch (e) {
+			console.error('Failed to clear world state:', e);
+		}
+	}
+
 	// --- World state display helpers ---
 
 	function getEntityLabel(entityKey: string): string {
@@ -461,6 +471,7 @@ export function createSandboxState(options: SandboxStateOptions) {
 
 		// World state actions
 		generateWorldState: handleGenerateWorldState,
+		clearWorldState: handleClearWorldState,
 
 		// World state display helpers
 		getEntityLabel,

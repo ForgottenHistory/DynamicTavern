@@ -38,7 +38,9 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 			character,
 			settings,
 			style,
-			parseInt(userId)
+			parseInt(userId),
+			undefined, // no conversationId
+			'' // no scenario in sandbox mode
 		);
 
 		return json({ content });

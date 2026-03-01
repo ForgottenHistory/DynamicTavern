@@ -56,7 +56,7 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 			narrateType,
 			undefined, // no conversationId
 			itemContext, // itemContext for look_item
-			undefined, // no scenarioOverride
+			'', // no scenario in sandbox mode
 			parseInt(userId)
 		);
 

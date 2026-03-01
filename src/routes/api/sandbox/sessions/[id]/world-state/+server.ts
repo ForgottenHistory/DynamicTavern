@@ -64,17 +64,6 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 			return json({ error: 'No character present' }, { status: 400 });
 		}
 
-		// Parse character card data for scenario
-		let characterData: any = {};
-		try {
-			characterData = JSON.parse(character.cardData);
-			if (characterData.data) {
-				characterData = characterData.data;
-			}
-		} catch (error) {
-			console.error('Failed to parse character card data:', error);
-		}
-
 		// Get user info
 		const userInfo = await personaService.getActiveUserInfo(parseInt(userId));
 
@@ -85,18 +74,28 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 		// Format chat history
 		const chatHistory = last10
 			.map((m) => {
-				const name = m.role === 'user' ? userInfo.name : (m.role === 'assistant' ? character.name : 'Narrator');
-				return `[${name}] ${m.content}`;
+				const name = m.role === 'user' ? userInfo.name : (m.role === 'assistant' ? (m.senderName || character.name) : 'Narrator');
+				return `${name}: ${m.content}`;
 			})
 			.join('\n\n');
+
+		// Get previous world state if it exists
+		let previousState = null;
+		if (session.worldInfo) {
+			try {
+				const parsed = JSON.parse(session.worldInfo);
+				previousState = parsed.worldState || parsed;
+			} catch { /* ignore */ }
+		}
 
 		// Generate world state
 		const worldState = await clothesGenerationService.generateClothes({
 			characterName: character.name,
-			characterDescription: character.description || characterData.description || '',
-			scenario: characterData.scenario || '',
+			characterDescription: character.description || '',
+			scenario: '',
 			userName: userInfo.name,
-			chatHistory
+			chatHistory,
+			previousState
 		});
 
 		// Save to database
@@ -109,5 +108,35 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 	} catch (error) {
 		console.error('Failed to generate world state:', error);
 		return json({ error: 'Failed to generate world state' }, { status: 500 });
+	}
+};
+
+// DELETE - Clear world state for a sandbox session
+export const DELETE: RequestHandler = async ({ params, cookies }) => {
+	const userId = cookies.get('userId');
+	if (!userId) {
+		return json({ error: 'Not authenticated' }, { status: 401 });
+	}
+
+	const sessionId = parseInt(params.id!);
+	if (isNaN(sessionId)) {
+		return json({ error: 'Invalid session ID' }, { status: 400 });
+	}
+
+	try {
+		const session = await sandboxService.getSession(sessionId, parseInt(userId));
+		if (!session) {
+			return json({ error: 'Session not found' }, { status: 404 });
+		}
+
+		await db
+			.update(sandboxSessions)
+			.set({ worldInfo: null })
+			.where(eq(sandboxSessions.id, sessionId));
+
+		return json({ success: true });
+	} catch (error) {
+		console.error('Failed to clear world state:', error);
+		return json({ error: 'Failed to clear world state' }, { status: 500 });
 	}
 };

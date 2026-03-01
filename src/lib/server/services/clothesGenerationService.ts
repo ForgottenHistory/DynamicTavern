@@ -51,14 +51,44 @@ async function loadAttributeConfig(): Promise<WorldAttributesConfig> {
  */
 function replaceTemplateVariables(
 	template: string,
-	variables: { char: string; user: string; scenario: string; description: string; history: string }
+	variables: { char: string; user: string; scenario: string; description: string; history: string; previous_state: string }
 ): string {
 	return template
 		.replace(/\{\{char\}\}/g, variables.char)
 		.replace(/\{\{user\}\}/g, variables.user)
 		.replace(/\{\{scenario\}\}/g, variables.scenario)
 		.replace(/\{\{description\}\}/g, variables.description)
-		.replace(/\{\{history\}\}/g, variables.history);
+		.replace(/\{\{history\}\}/g, variables.history)
+		.replace(/\{\{previous_state\}\}/g, variables.previous_state);
+}
+
+/**
+ * Format existing world state into readable text for the prompt
+ */
+function formatPreviousState(state: WorldStateData, charName: string): string {
+	const parts: string[] = [];
+
+	for (const [entityKey, entity] of Object.entries(state)) {
+		const label = entityKey === 'character' ? charName : entityKey === 'user' ? 'You' : entityKey;
+		const lines: string[] = [`${label}:`];
+
+		for (const attr of entity.attributes) {
+			if (attr.type === 'text' && typeof attr.value === 'string' && attr.value.trim()) {
+				lines.push(`${attr.name}: ${attr.value}`);
+			} else if (attr.type === 'list' && Array.isArray(attr.value) && attr.value.length > 0) {
+				lines.push(`${attr.name}:`);
+				for (const item of attr.value) {
+					lines.push(`- ${item.name}: ${item.description}`);
+				}
+			}
+		}
+
+		if (lines.length > 1) {
+			parts.push(lines.join('\n'));
+		}
+	}
+
+	return parts.join('\n\n');
 }
 
 /**
@@ -244,13 +274,15 @@ Guidelines:
 		characterDescription,
 		scenario,
 		userName,
-		chatHistory
+		chatHistory,
+		previousState
 	}: {
 		characterName: string;
 		characterDescription: string;
 		scenario: string;
 		userName: string;
 		chatHistory?: string;
+		previousState?: WorldStateData | null;
 	}): Promise<WorldStateData> {
 		try {
 			console.log(`🌍 Generating world state for ${characterName} and ${userName}...`);
@@ -258,12 +290,15 @@ Guidelines:
 			const settings = decisionEngineSettingsService.getSettings();
 			const promptTemplate = await this.loadPrompt();
 
+			const previousStateText = previousState ? formatPreviousState(previousState, characterName) : '';
+
 			const prompt = replaceTemplateVariables(promptTemplate, {
 				char: characterName,
 				user: userName,
 				scenario: scenario || 'A casual encounter',
 				description: characterDescription || '',
-				history: chatHistory || '(No conversation yet)'
+				history: chatHistory || '(No conversation yet)',
+				previous_state: previousStateText
 			});
 
 			const result = await callLlm({
@@ -298,6 +333,7 @@ Guidelines:
 		scenario: string;
 		userName: string;
 		chatHistory?: string;
+		previousState?: WorldStateData | null;
 	}): Promise<WorldStateData> {
 		return this.generateWorldState(params);
 	}

@@ -111,10 +111,13 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 		const chatHistory = recentMessages
 			.reverse()
 			.map((m) => {
-				const name = m.role === 'user' ? userInfo.name : (m.role === 'assistant' ? character.name : 'Narrator');
-				return `[${name}] ${m.content}`;
+				const name = m.role === 'user' ? userInfo.name : (m.role === 'assistant' ? (m.senderName || character.name) : 'Narrator');
+				return `${name}: ${m.content}`;
 			})
 			.join('\n\n');
+
+		// Get previous world state if it exists
+		const previousState = await worldInfoService.getClothes(conversation.id);
 
 		// Generate clothes - use conversation scenario (selected by user) or fall back to character card
 		const clothes = await clothesGenerationService.generateClothes({
@@ -122,7 +125,8 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 			characterDescription: character.description || characterData.description || '',
 			scenario: conversation.scenario || characterData.scenario || '',
 			userName: userInfo.name,
-			chatHistory
+			chatHistory,
+			previousState
 		});
 
 		// Save to database

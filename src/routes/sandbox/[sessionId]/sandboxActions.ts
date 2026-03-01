@@ -156,6 +156,13 @@ export async function generateWorldState(sessionId: number): Promise<WorldStateD
 	return null;
 }
 
+export async function clearWorldState(sessionId: number): Promise<boolean> {
+	const res = await fetch(`/api/sandbox/sessions/${sessionId}/world-state`, {
+		method: 'DELETE'
+	});
+	return res.ok;
+}
+
 export async function loadUserSettings(): Promise<{
 	chatLayout: 'bubbles' | 'discord';
 	avatarStyle: 'circle' | 'rounded';
