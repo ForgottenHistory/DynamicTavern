@@ -50,6 +50,8 @@ export async function loadSettings(): Promise<{
 	autoWorldStateMaxMessages: number;
 	userAvatar: string | null;
 	userName: string | null;
+	userBubbleColor: string;
+	userTextColor: string;
 }> {
 	try {
 		const response = await fetch('/api/settings');
@@ -68,7 +70,9 @@ export async function loadSettings(): Promise<{
 				autoWorldStateMinMessages: result.autoWorldStateMinMessages ?? 5,
 				autoWorldStateMaxMessages: result.autoWorldStateMaxMessages ?? 12,
 				userAvatar: result.userAvatar || null,
-				userName: result.userName || null
+				userName: result.userName || null,
+				userBubbleColor: result.userBubbleColor ?? '#14b8a6',
+				userTextColor: result.userTextColor ?? '#ffffff'
 			};
 		}
 	} catch (error) {
@@ -87,7 +91,9 @@ export async function loadSettings(): Promise<{
 		autoWorldStateMinMessages: 5,
 		autoWorldStateMaxMessages: 12,
 		userAvatar: null,
-		userName: null
+		userName: null,
+		userBubbleColor: '#14b8a6',
+		userTextColor: '#ffffff'
 	};
 }
 

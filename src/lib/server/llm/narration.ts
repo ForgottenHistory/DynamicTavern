@@ -106,7 +106,14 @@ export async function generateNarration(
 	// Format conversation history as text
 	const historyText = conversationHistory
 		.map((msg) => {
-			const name = msg.role === 'user' ? userName : (msg.role === 'system' ? 'System' : character.name);
+			let name = userName;
+			if (msg.role === 'assistant') {
+				name = msg.senderName || character.name;
+			} else if (msg.role === 'narrator') {
+				name = 'Narrator';
+			} else if (msg.role === 'system') {
+				name = 'System';
+			}
 			return `${name}: ${msg.content}`;
 		})
 		.join('\n\n');
@@ -184,8 +191,12 @@ export async function generateNarration(
 	// Log response for debugging
 	llmLogService.saveResponseLog(response.content, response.content, 'action', logId, response);
 
+	// Strip name prefix if present (e.g. "Narrator: " from the primer)
+	let content = response.content.trim();
+	content = content.replace(/^Narrator\s*:\s*/i, '');
+
 	return {
-		content: response.content,
+		content,
 		reasoning: response.reasoning || null
 	};
 }
@@ -323,8 +334,12 @@ export async function generateSceneNarration(
 	// Log response for debugging
 	llmLogService.saveResponseLog(response.content, response.content, 'scene_narration', logId, response);
 
+	// Strip name prefix if present
+	let content = response.content.trim();
+	content = content.replace(/^Narrator\s*:\s*/i, '');
+
 	return {
-		content: response.content,
+		content,
 		reasoning: response.reasoning || null
 	};
 }

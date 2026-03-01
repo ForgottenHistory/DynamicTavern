@@ -18,7 +18,21 @@
 	let autoWorldStateMinMessages = $state(5);
 	let autoWorldStateMaxMessages = $state(12);
 	let writingStyle = $state('');
+	let userBubbleColor = $state('#14b8a6');
 	let loading = $state(true);
+
+	const bubbleColorPresets = [
+		{ color: '#14b8a6', label: 'Teal' },
+		{ color: '#3b82f6', label: 'Blue' },
+		{ color: '#6366f1', label: 'Indigo' },
+		{ color: '#8b5cf6', label: 'Purple' },
+		{ color: '#ec4899', label: 'Pink' },
+		{ color: '#ef4444', label: 'Red' },
+		{ color: '#f97316', label: 'Orange' },
+		{ color: '#f59e0b', label: 'Amber' },
+		{ color: '#10b981', label: 'Emerald' },
+		{ color: '#64748b', label: 'Slate' }
+	];
 
 	// Load settings on mount
 	$effect(() => {
@@ -45,6 +59,7 @@
 				autoWorldStateEnabled = data.autoWorldStateEnabled ?? false;
 				autoWorldStateMinMessages = data.autoWorldStateMinMessages ?? 5;
 				autoWorldStateMaxMessages = data.autoWorldStateMaxMessages ?? 12;
+				userBubbleColor = data.userBubbleColor ?? '#14b8a6';
 			}
 
 			if (writingStyleRes.ok) {
@@ -67,7 +82,7 @@
 				fetch('/api/settings', {
 					method: 'PUT',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages, worldSidebarEnabled, autoWorldStateEnabled, autoWorldStateMinMessages, autoWorldStateMaxMessages })
+					body: JSON.stringify({ chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages, worldSidebarEnabled, autoWorldStateEnabled, autoWorldStateMinMessages, autoWorldStateMaxMessages, userBubbleColor })
 				}),
 				fetch('/api/writing-style', {
 					method: 'PUT',
@@ -79,7 +94,7 @@
 			if (settingsRes.ok && writingStyleRes.ok) {
 				message = { type: 'success', text: 'Settings saved successfully!' };
 				// Dispatch event so chat components can react
-				window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages, worldSidebarEnabled, autoWorldStateEnabled, autoWorldStateMinMessages, autoWorldStateMaxMessages } }));
+				window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages, worldSidebarEnabled, autoWorldStateEnabled, autoWorldStateMinMessages, autoWorldStateMaxMessages, userBubbleColor } }));
 			} else {
 				const data = await settingsRes.json();
 				message = { type: 'error', text: data.error || 'Failed to save settings' };
@@ -289,6 +304,43 @@
 								</div>
 							</div>
 						{/if}
+
+						<!-- User Message Color Section -->
+						<div>
+							<h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">User Message Color</h2>
+							<p class="text-sm text-[var(--text-muted)] mb-4">
+								Choose a border color for your messages in chat
+							</p>
+
+							<div class="space-y-4">
+								<div class="p-4 rounded-xl border border-[var(--border-primary)]">
+									<div class="flex flex-wrap gap-2">
+										{#each bubbleColorPresets as preset}
+											<button
+												type="button"
+												onclick={() => userBubbleColor = preset.color}
+												class="w-8 h-8 rounded-full border-2 transition-all {userBubbleColor === preset.color ? 'border-white scale-110 ring-2 ring-[var(--text-muted)]' : 'border-transparent hover:scale-105'}"
+												style="background-color: {preset.color}"
+												title={preset.label}
+											></button>
+										{/each}
+									</div>
+								</div>
+
+								<!-- Preview -->
+								<div class="p-4 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-primary)]">
+									<p class="text-sm text-[var(--text-muted)] mb-3">Preview</p>
+									<div class="flex justify-end">
+										<div
+											class="rounded-2xl px-4 py-3 border-2 max-w-[70%] bg-[var(--assistant-bubble)] text-[var(--text-primary)]"
+											style="border-color: {userBubbleColor}"
+										>
+											This is what your messages will look like!
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
 
 						<!-- Text Processing Section -->
 						<div>

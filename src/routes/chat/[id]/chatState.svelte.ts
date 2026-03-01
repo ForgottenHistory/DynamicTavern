@@ -50,6 +50,8 @@ export function createChatState(options: ChatStateOptions) {
 	let autoWrapActions = $state(false);
 	let userAvatar = $state<string | null>(null);
 	let userName = $state<string | null>(null);
+	let userBubbleColor = $state('#14b8a6');
+	let userTextColor = $state('#ffffff');
 
 	// Random narration settings
 	let randomNarrationEnabled = $state(false);
@@ -201,6 +203,8 @@ export function createChatState(options: ChatStateOptions) {
 		autoWorldStateMaxMessages = settings.autoWorldStateMaxMessages;
 		userAvatar = settings.userAvatar;
 		userName = settings.userName;
+		userBubbleColor = settings.userBubbleColor;
+		userTextColor = settings.userTextColor;
 
 		// Set initial threshold if enabled
 		if (randomNarrationEnabled && nextNarrationThreshold === 0) {
@@ -212,7 +216,7 @@ export function createChatState(options: ChatStateOptions) {
 
 	}
 
-	function handleSettingsUpdate(e: CustomEvent<{ chatLayout: 'bubbles' | 'discord'; avatarStyle: 'circle' | 'rounded'; textCleanupEnabled: boolean; autoWrapActions: boolean; randomNarrationEnabled?: boolean; randomNarrationMinMessages?: number; randomNarrationMaxMessages?: number; worldSidebarEnabled?: boolean; autoWorldStateEnabled?: boolean; autoWorldStateMinMessages?: number; autoWorldStateMaxMessages?: number }>) {
+	function handleSettingsUpdate(e: CustomEvent<{ chatLayout: 'bubbles' | 'discord'; avatarStyle: 'circle' | 'rounded'; textCleanupEnabled: boolean; autoWrapActions: boolean; randomNarrationEnabled?: boolean; randomNarrationMinMessages?: number; randomNarrationMaxMessages?: number; worldSidebarEnabled?: boolean; autoWorldStateEnabled?: boolean; autoWorldStateMinMessages?: number; autoWorldStateMaxMessages?: number; userBubbleColor?: string; userTextColor?: string }>) {
 		chatLayout = e.detail.chatLayout;
 		if (e.detail.avatarStyle) avatarStyle = e.detail.avatarStyle;
 		if (typeof e.detail.textCleanupEnabled === 'boolean') textCleanupEnabled = e.detail.textCleanupEnabled;
@@ -236,6 +240,8 @@ export function createChatState(options: ChatStateOptions) {
 		}
 		if (typeof e.detail.autoWorldStateMinMessages === 'number') autoWorldStateMinMessages = e.detail.autoWorldStateMinMessages;
 		if (typeof e.detail.autoWorldStateMaxMessages === 'number') autoWorldStateMaxMessages = e.detail.autoWorldStateMaxMessages;
+		if (typeof e.detail.userBubbleColor === 'string') userBubbleColor = e.detail.userBubbleColor;
+		if (typeof e.detail.userTextColor === 'string') userTextColor = e.detail.userTextColor;
 	}
 
 	// Character and conversation loading
@@ -540,6 +546,8 @@ export function createChatState(options: ChatStateOptions) {
 		get autoWrapActions() { return autoWrapActions; },
 		get userAvatar() { return userAvatar; },
 		get userName() { return userName; },
+		get userBubbleColor() { return userBubbleColor; },
+		get userTextColor() { return userTextColor; },
 		get showCharacterImage() { return showCharacterImage; },
 		set showCharacterImage(value: boolean) { showCharacterImage = value; },
 		get branches() { return branches; },

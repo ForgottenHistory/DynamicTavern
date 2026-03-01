@@ -89,7 +89,14 @@ export async function generateChatCompletion(
 	// Format conversation history as text
 	const historyText = conversationHistory
 		.map((msg) => {
-			const name = msg.role === 'user' ? userName : (msg.role === 'system' ? 'System' : character.name);
+			let name = userName;
+			if (msg.role === 'assistant') {
+				name = msg.senderName || character.name;
+			} else if (msg.role === 'narrator') {
+				name = 'Narrator';
+			} else if (msg.role === 'system') {
+				name = 'System';
+			}
 			return `${name}: ${msg.content}`;
 		})
 		.join('\n\n');

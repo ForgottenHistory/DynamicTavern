@@ -103,6 +103,7 @@
 							avatarStyle={state.avatarStyle}
 							textCleanupEnabled={state.textCleanupEnabled}
 							autoWrapActions={state.autoWrapActions}
+							userBubbleColor={state.userBubbleColor}
 							onSwipe={state.swipeMessage}
 							onSaveEdit={state.saveMessageEdit}
 							onDelete={state.deleteMessageAndBelow}

@@ -79,6 +79,9 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 		}
 
 		// Get the parent conversation
+		if (!branchPoint.conversationId) {
+			return json({ error: 'Message does not belong to a conversation' }, { status: 400 });
+		}
 		const [parentConversation] = await db
 			.select()
 			.from(conversations)

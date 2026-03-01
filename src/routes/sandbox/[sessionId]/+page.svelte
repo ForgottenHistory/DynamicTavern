@@ -1,0 +1,335 @@
+<script lang="ts">
+	import type { PageData } from './$types';
+	import MainLayout from '$lib/components/MainLayout.svelte';
+	import ChatMessages from '$lib/components/chat/ChatMessages.svelte';
+	import ChatInput from '$lib/components/chat/ChatInput.svelte';
+	import { slide } from 'svelte/transition';
+	import { onMount } from 'svelte';
+	import { createSandboxState } from './sandboxState.svelte';
+
+	let { data }: { data: PageData } = $props();
+
+	// Component references for bind:this - these don't need $state
+	// svelte-ignore non_reactive_update
+	let chatMessagesRef: ChatMessages | undefined;
+	// svelte-ignore non_reactive_update
+	let chatInputRef: ChatInput | undefined;
+
+	const state = createSandboxState({
+		sessionId: data.sessionId,
+		userId: data.user.id,
+		userDisplayName: data.user.displayName,
+		onScrollToBottom: () => {
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => {
+					chatMessagesRef?.scrollToBottom();
+				});
+			});
+		},
+		onSetInput: (content: string) => chatInputRef?.setInput(content)
+	});
+
+	onMount(() => {
+		state.init();
+	});
+</script>
+
+<svelte:head>
+	<title>{state.world?.name || 'Sandbox'} | DynamicTavern</title>
+</svelte:head>
+
+<MainLayout user={data.user} currentPath="/sandbox">
+	<div class="h-full flex flex-col bg-[var(--bg-primary)]">
+		{#if state.loading}
+			<div class="flex-1 flex items-center justify-center">
+				<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent-primary)]"></div>
+			</div>
+		{:else if state.error}
+			<div class="flex-1 flex items-center justify-center">
+				<div class="text-center">
+					<p class="text-red-500 mb-4">{state.error}</p>
+					<button
+						onclick={state.loadSession}
+						class="px-4 py-2 bg-[var(--accent-primary)] text-white rounded-lg hover:opacity-90 transition"
+					>
+						Retry
+					</button>
+				</div>
+			</div>
+		{:else}
+			<!-- Header -->
+			<div class="flex-shrink-0 border-b border-[var(--border-primary)] bg-[var(--bg-secondary)]">
+				<div class="flex items-center justify-between px-4 py-3">
+					<div class="flex items-center gap-3">
+						<a
+							href="/sandbox"
+							class="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition"
+							title="Back to worlds"
+						>
+							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+							</svg>
+						</a>
+						<div>
+							<h1 class="text-lg font-semibold text-[var(--text-primary)]">{state.world?.name}</h1>
+							<p class="text-sm text-[var(--text-muted)]">{state.location?.name}</p>
+						</div>
+					</div>
+					<button
+						onclick={state.endSession}
+						class="p-2 text-[var(--text-muted)] hover:text-red-500 hover:bg-[var(--bg-tertiary)] rounded-lg transition"
+						title="End session"
+					>
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+						</svg>
+					</button>
+				</div>
+			</div>
+
+			<!-- Main Content -->
+			<div class="flex-1 flex min-h-0">
+				<!-- Chat Area -->
+				<div class="flex-1 flex flex-col min-h-0">
+					<!-- Messages -->
+					<ChatMessages
+						bind:this={chatMessagesRef}
+						messages={state.messages}
+						loading={false}
+						isTyping={state.sending}
+						generating={state.generating}
+						charName={state.character?.name}
+						userName={state.userName || data.user.displayName}
+						charAvatar={state.character?.thumbnailData || state.character?.imageData}
+						userAvatar={state.userAvatar}
+						chatLayout={state.chatLayout}
+						avatarStyle={state.avatarStyle}
+						textCleanupEnabled={state.textCleanupEnabled}
+						autoWrapActions={state.autoWrapActions}
+						userBubbleColor={state.userBubbleColor}
+						onSwipe={state.handleSwipe}
+						onSaveEdit={state.handleSaveEdit}
+						onDelete={state.handleDelete}
+					/>
+
+					<ChatInput
+						bind:this={chatInputRef}
+						disabled={state.sending || state.generating}
+						hasAssistantMessages={state.hasAssistantMessages}
+						impersonating={state.impersonating}
+						sceneCharacters={state.sceneCharacters}
+						onSend={state.sendMessage}
+						onGenerate={state.character ? state.generate : undefined}
+						onRegenerate={state.handleRegenerate}
+						onImpersonate={state.character ? state.handleImpersonate : undefined}
+						onSceneAction={state.handleSceneAction}
+					/>
+				</div>
+
+				<!-- Right Sidebar - Location & Navigation -->
+				<div class="w-80 flex-shrink-0 border-l border-[var(--border-primary)] bg-[var(--bg-secondary)] overflow-y-auto">
+					<!-- Location Info -->
+					<div class="p-4 border-b border-[var(--border-primary)]">
+						<h2 class="text-lg font-semibold text-[var(--text-primary)] mb-2">{state.location?.name}</h2>
+						<p class="text-sm text-[var(--text-muted)]">{state.location?.description}</p>
+					</div>
+
+					<!-- Character Present -->
+					{#if state.character}
+						<div class="p-4 border-b border-[var(--border-primary)]">
+							<h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Present</h3>
+							<div class="flex items-center gap-3">
+								{#if state.character.thumbnailData || state.character.imageData}
+									<img
+										src={state.character.thumbnailData || state.character.imageData}
+										alt={state.character.name}
+										class="w-12 h-12 rounded-lg object-cover"
+									/>
+								{:else}
+									<div class="w-12 h-12 rounded-lg bg-[var(--accent-primary)]/20 flex items-center justify-center">
+										<span class="text-lg font-bold text-[var(--accent-primary)]">
+											{state.character.name.charAt(0)}
+										</span>
+									</div>
+								{/if}
+								<div>
+									<p class="font-medium text-[var(--text-primary)]">{state.character.name}</p>
+									{#if state.character.description}
+										<p class="text-xs text-[var(--text-muted)] line-clamp-2">{state.character.description}</p>
+									{/if}
+								</div>
+							</div>
+							<button
+								onclick={state.generate}
+								disabled={state.generating}
+								class="mt-3 w-full px-3 py-2 text-sm bg-[var(--bg-tertiary)] text-[var(--text-primary)] rounded-lg hover:bg-[var(--accent-primary)]/10 transition disabled:opacity-50"
+							>
+								{state.generating ? 'Generating...' : 'Prompt action'}
+							</button>
+						</div>
+					{:else}
+						<div class="p-4 border-b border-[var(--border-primary)]">
+							<h3 class="text-sm font-medium text-[var(--text-secondary)] mb-2">Present</h3>
+							<p class="text-sm text-[var(--text-muted)] italic">No one here</p>
+						</div>
+					{/if}
+
+					<!-- World State -->
+					{#if state.worldSidebarEnabled}
+						<div class="border-b border-[var(--border-primary)]">
+							<div class="flex items-center justify-between p-4">
+								<button
+									onclick={() => state.worldExpanded = !state.worldExpanded}
+									class="flex-1 flex items-center gap-2 text-left"
+								>
+									<h3 class="text-sm font-medium text-[var(--text-secondary)]">World State</h3>
+									<svg class="w-4 h-4 text-[var(--text-muted)] transition-transform duration-200 {state.worldExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+									</svg>
+								</button>
+								<button
+									onclick={state.generateWorldState}
+									disabled={state.worldStateLoading}
+									class="p-1 hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] rounded transition disabled:opacity-50"
+									title="Regenerate world state"
+								>
+									<svg class="w-3.5 h-3.5 {state.worldStateLoading ? 'animate-spin' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+									</svg>
+								</button>
+							</div>
+
+							{#if state.worldExpanded}
+								<div class="{state.worldStateLoading ? 'opacity-60' : ''}" transition:slide={{ duration: 200 }}>
+									{#if state.worldState && Object.keys(state.worldState).length > 0}
+										{#each Object.entries(state.worldState) as [entityKey, entity]}
+											{#if entity.attributes.some(a => (a.type === 'text' && typeof a.value === 'string' && a.value.trim()) || (a.type === 'list' && Array.isArray(a.value) && a.value.length > 0))}
+												<!-- Entity Header -->
+												<button
+													onclick={() => state.toggleWorldSection(entityKey)}
+													class="w-full flex items-center justify-between px-4 py-2 hover:bg-[var(--bg-tertiary)] transition"
+												>
+													<span class="text-sm font-medium text-[var(--accent-secondary)]">{state.getEntityLabel(entityKey)}</span>
+													<svg class="w-3.5 h-3.5 text-[var(--text-muted)] transition-transform duration-200 {state.expandedWorldSections.has(entityKey) ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+													</svg>
+												</button>
+
+												{#if state.expandedWorldSections.has(entityKey)}
+													<div class="pb-2" transition:slide={{ duration: 150 }}>
+														{#each entity.attributes as attr}
+															{@const icon = state.getAttributeIcon(attr.name)}
+															{@const itemKey = `${entityKey}-${attr.name}`}
+
+															{#if attr.type === 'text' && typeof attr.value === 'string' && attr.value.trim()}
+																<div class="px-4 py-1.5 flex items-start gap-2">
+																	{#if icon}
+																		<svg class="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style="color: {icon.color}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={icon.path}/>
+																		</svg>
+																	{/if}
+																	<div>
+																		<span class="text-xs text-[var(--text-muted)] uppercase tracking-wide">{attr.name.charAt(0).toUpperCase() + attr.name.slice(1)}</span>
+																		<p class="text-sm text-[var(--text-secondary)]">{attr.value}</p>
+																	</div>
+																</div>
+
+															{:else if attr.type === 'list' && Array.isArray(attr.value) && attr.value.length > 0}
+																<div class="px-4 py-1.5">
+																	<span class="text-xs text-[var(--text-muted)] uppercase tracking-wide flex items-center gap-1.5">
+																		{#if icon}
+																			<svg class="w-3 h-3" style="color: {icon.color}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={icon.path}/>
+																			</svg>
+																		{/if}
+																		{attr.name.charAt(0).toUpperCase() + attr.name.slice(1)}
+																	</span>
+																</div>
+																{#each attr.value as item, itemIdx}
+																	{@const listItemKey = `${itemKey}-${itemIdx}`}
+																	<div class="flex items-center px-4 py-1 hover:bg-[var(--bg-tertiary)] transition">
+																		<button
+																			onclick={() => state.toggleWorldItem(listItemKey)}
+																			class="flex-1 text-left flex items-center gap-1.5"
+																		>
+																			<svg class="w-3 h-3 text-[var(--text-muted)] transition-transform duration-200 flex-shrink-0 {state.expandedWorldItems.has(listItemKey) ? 'rotate-90' : ''}" fill="currentColor" viewBox="0 0 20 20">
+																				<path d="M6 6L14 10L6 14V6Z"/>
+																			</svg>
+																			<span class="text-sm text-[var(--text-secondary)]">{item.name}</span>
+																		</button>
+																		<button
+																			onclick={() => state.handleSceneAction('look_item', { owner: state.getEntityLabel(entityKey), itemName: item.name, itemDescription: item.description })}
+																			class="p-1 hover:bg-[var(--border-primary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] rounded transition"
+																			title="Look at {item.name}"
+																		>
+																			<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+																				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+																			</svg>
+																		</button>
+																	</div>
+																	{#if state.expandedWorldItems.has(listItemKey)}
+																		<div class="px-4 pb-1 pl-9" transition:slide={{ duration: 150 }}>
+																			<p class="text-xs text-[var(--text-muted)]">{item.description}</p>
+																		</div>
+																	{/if}
+																{/each}
+															{/if}
+														{/each}
+													</div>
+												{/if}
+											{/if}
+										{/each}
+									{:else if state.worldStateLoading}
+										<div class="flex items-center justify-center py-4">
+											<div class="animate-spin rounded-full h-5 w-5 border-2 border-[var(--accent-primary)] border-t-transparent"></div>
+											<span class="ml-2 text-sm text-[var(--text-muted)]">Generating...</span>
+										</div>
+									{:else}
+										<div class="text-center py-4">
+											<p class="text-xs text-[var(--text-muted)]">No data</p>
+											<button
+												onclick={state.generateWorldState}
+												class="mt-1 text-xs text-[var(--accent-primary)] hover:underline"
+											>
+												Generate world state
+											</button>
+										</div>
+									{/if}
+								</div>
+							{/if}
+						</div>
+					{/if}
+
+					<!-- Connections -->
+					<div class="p-4">
+						<h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Go to</h3>
+						<div class="space-y-2">
+							{#each state.connections as connection}
+								<button
+									onclick={() => state.move(connection.id)}
+									disabled={state.moving}
+									class="w-full flex items-center gap-3 p-3 bg-[var(--bg-tertiary)] rounded-lg hover:bg-[var(--accent-primary)]/10 transition text-left disabled:opacity-50"
+								>
+									<svg class="w-5 h-5 text-[var(--accent-primary)] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+									</svg>
+									<div class="flex-1 min-w-0">
+										<p class="font-medium text-[var(--text-primary)] truncate">{connection.location.name}</p>
+									</div>
+								</button>
+							{/each}
+						</div>
+					</div>
+
+					{#if state.moving}
+						<div class="p-4 text-center">
+							<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--accent-primary)] mx-auto"></div>
+							<p class="text-sm text-[var(--text-muted)] mt-2">Moving...</p>
+						</div>
+					{/if}
+				</div>
+			</div>
+		{/if}
+	</div>
+</MainLayout>

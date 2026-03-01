@@ -41,7 +41,7 @@ export const DELETE: RequestHandler = async ({ params, cookies }) => {
 		await db
 			.delete(messages)
 			.where(and(
-				eq(messages.conversationId, message.message.conversationId),
+				eq(messages.conversationId, message.message.conversationId!),
 				gte(messages.id, messageId)
 			));
 

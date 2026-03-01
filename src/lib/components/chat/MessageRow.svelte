@@ -15,6 +15,7 @@
 		avatarStyle?: 'circle' | 'rounded';
 		textCleanupEnabled?: boolean;
 		autoWrapActions?: boolean;
+		userBubbleColor?: string;
 		generating: boolean;
 		onSwipe: (direction: 'left' | 'right') => void;
 		onSaveEdit: (content: string) => void;
@@ -22,7 +23,7 @@
 		onBranch?: () => void;
 	}
 
-	let { message, index, isLast, charName, userName, charAvatar, userAvatar, avatarStyle = 'circle', textCleanupEnabled = true, autoWrapActions = false, generating, onSwipe, onSaveEdit, onDelete, onBranch }: Props = $props();
+	let { message, index, isLast, charName, userName, charAvatar, userAvatar, avatarStyle = 'circle', textCleanupEnabled = true, autoWrapActions = false, userBubbleColor = '#14b8a6', generating, onSwipe, onSaveEdit, onDelete, onBranch }: Props = $props();
 
 	// Reasoning modal state
 	let showReasoningModal = $state(false);
@@ -45,7 +46,7 @@
 	let isSystem = $derived(message.role === 'system');
 	let isNarrator = $derived(message.role === 'narrator');
 	let showSwipeControls = $derived(message.role === 'assistant' && isLast);
-	let showGeneratingPlaceholder = $derived(generating && isLast && message.role === 'assistant');
+	let showGeneratingPlaceholder = $derived(generating && isLast && (message.role === 'assistant' || message.role === 'narrator'));
 
 	// Display info - prefer stored sender info, fall back to current names
 	let displayName = $derived(
@@ -153,7 +154,10 @@
 	<div class="flex-1 min-w-0">
 		<!-- Header: Name and timestamp -->
 		<div class="flex items-baseline gap-2 mb-1">
-			<span class="font-semibold {isNarrator ? 'text-[var(--text-secondary)]' : isSystem ? 'text-[var(--warning)]' : isUser ? 'text-[var(--accent-primary)]' : 'text-[var(--accent-secondary)]'}">
+			<span
+				class="font-semibold {isNarrator ? 'text-[var(--text-secondary)]' : isSystem ? 'text-[var(--warning)]' : !isUser ? 'text-[var(--accent-secondary)]' : ''}"
+				style={isUser ? `color: ${userBubbleColor}` : ''}
+			>
 				{displayName}
 			</span>
 			<span class="text-xs text-[var(--text-muted)]">
@@ -179,7 +183,7 @@
 
 		<!-- Message content -->
 		{#if showGeneratingPlaceholder}
-			<div class="flex items-center gap-2">
+			<div class="flex justify-center py-2">
 				<div class="flex gap-1">
 					<div class="w-2 h-2 bg-[var(--text-muted)] rounded-full animate-bounce" style="animation-delay: 0s"></div>
 					<div class="w-2 h-2 bg-[var(--text-muted)] rounded-full animate-bounce" style="animation-delay: 0.2s"></div>

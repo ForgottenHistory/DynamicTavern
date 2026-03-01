@@ -23,6 +23,9 @@ export const users = sqliteTable('users', {
 	autoWorldStateEnabled: integer('auto_world_state_enabled', { mode: 'boolean' }).notNull().default(false),
 	autoWorldStateMinMessages: integer('auto_world_state_min_messages').notNull().default(5),
 	autoWorldStateMaxMessages: integer('auto_world_state_max_messages').notNull().default(12),
+	// User message color customization
+	userBubbleColor: text('user_bubble_color').notNull().default('#14b8a6'),
+	userTextColor: text('user_text_color').notNull().default('#ffffff'),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.$defaultFn(() => new Date())
@@ -279,9 +282,10 @@ export const conversations = sqliteTable('conversations', {
 
 export const messages = sqliteTable('messages', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
-	conversationId: integer('conversation_id')
-		.notNull()
+	conversationId: integer('conversation_id') // Null for sandbox messages
 		.references(() => conversations.id, { onDelete: 'cascade' }),
+	sandboxSessionId: integer('sandbox_session_id') // Null for regular chat messages
+		.references(() => sandboxSessions.id, { onDelete: 'cascade' }),
 	role: text('role').notNull(), // 'user' | 'assistant' | 'narrator' | 'system'
 	characterId: integer('character_id') // Which character sent this (null for narrator/user/system)
 		.references(() => characters.id, { onDelete: 'set null' }),
@@ -309,6 +313,24 @@ export const sceneParticipants = sqliteTable('scene_participants', {
 		.notNull()
 		.$defaultFn(() => new Date()),
 	leftAt: integer('left_at', { mode: 'timestamp' }) // When character left scene (null = still present)
+});
+
+export const sandboxSessions = sqliteTable('sandbox_sessions', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	userId: integer('user_id')
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	worldFile: text('world_file').notNull(), // World JSON filename (without extension)
+	currentLocationId: text('current_location_id').notNull(), // Current location in world
+	currentCharacterId: integer('current_character_id') // Character at current location (nullable)
+		.references(() => characters.id, { onDelete: 'set null' }),
+	worldInfo: text('world_info'), // JSON string storing world state (mood, clothes, etc.)
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date())
 });
 
 export type User = typeof users.$inferSelect;
@@ -346,3 +368,5 @@ export type Message = typeof messages.$inferSelect;
 export type NewMessage = typeof messages.$inferInsert;
 export type SceneParticipant = typeof sceneParticipants.$inferSelect;
 export type NewSceneParticipant = typeof sceneParticipants.$inferInsert;
+export type SandboxSession = typeof sandboxSessions.$inferSelect;
+export type NewSandboxSession = typeof sandboxSessions.$inferInsert;

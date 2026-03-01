@@ -16,13 +16,14 @@
 		avatarStyle?: 'circle' | 'rounded';
 		textCleanupEnabled?: boolean;
 		autoWrapActions?: boolean;
+		userBubbleColor?: string;
 		onSwipe: (messageId: number, direction: 'left' | 'right') => void;
 		onSaveEdit: (messageId: number, index: number, content: string) => void;
 		onDelete: (messageId: number, index: number) => void;
 		onBranch?: (messageId: number) => void;
 	}
 
-	let { messages, loading, isTyping, generating, charName, userName, charAvatar, userAvatar, chatLayout = 'bubbles', avatarStyle = 'circle', textCleanupEnabled = true, autoWrapActions = false, onSwipe, onSaveEdit, onDelete, onBranch }: Props = $props();
+	let { messages, loading, isTyping, generating, charName, userName, charAvatar, userAvatar, chatLayout = 'bubbles', avatarStyle = 'circle', textCleanupEnabled = true, autoWrapActions = false, userBubbleColor = '#14b8a6', onSwipe, onSaveEdit, onDelete, onBranch }: Props = $props();
 
 	let container: HTMLDivElement | undefined = $state();
 
@@ -64,6 +65,7 @@
 						{avatarStyle}
 						{textCleanupEnabled}
 						{autoWrapActions}
+						{userBubbleColor}
 						{generating}
 						onSwipe={(direction) => onSwipe(message.id, direction)}
 						onSaveEdit={(content) => onSaveEdit(message.id, index, content)}
@@ -79,6 +81,7 @@
 						{userName}
 						{textCleanupEnabled}
 						{autoWrapActions}
+						{userBubbleColor}
 						{generating}
 						onSwipe={(direction) => onSwipe(message.id, direction)}
 						onSaveEdit={(content) => onSaveEdit(message.id, index, content)}

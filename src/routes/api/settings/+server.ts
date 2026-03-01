@@ -34,6 +34,8 @@ export const GET: RequestHandler = async ({ cookies }) => {
 		autoWorldStateEnabled: user.autoWorldStateEnabled ?? false,
 		autoWorldStateMinMessages: user.autoWorldStateMinMessages ?? 5,
 		autoWorldStateMaxMessages: user.autoWorldStateMaxMessages ?? 12,
+		userBubbleColor: user.userBubbleColor ?? '#14b8a6',
+		userTextColor: user.userTextColor ?? '#ffffff',
 		userAvatar: activeUserInfo.avatarData || null,
 		userName: activeUserInfo.name
 	});
@@ -46,7 +48,7 @@ export const PUT: RequestHandler = async ({ cookies, request }) => {
 	}
 
 	const body = await request.json();
-	const { chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages, worldSidebarEnabled, autoWorldStateEnabled, autoWorldStateMinMessages, autoWorldStateMaxMessages, writingStyle } = body;
+	const { chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages, worldSidebarEnabled, autoWorldStateEnabled, autoWorldStateMinMessages, autoWorldStateMaxMessages, writingStyle, userBubbleColor, userTextColor } = body;
 
 	// Validate chatLayout
 	if (chatLayout && !['bubbles', 'discord'].includes(chatLayout)) {
@@ -78,7 +80,16 @@ export const PUT: RequestHandler = async ({ cookies, request }) => {
 		}
 	}
 
-	const updateData: { chatLayout?: string; avatarStyle?: string; textCleanupEnabled?: boolean; autoWrapActions?: boolean; randomNarrationEnabled?: boolean; randomNarrationMinMessages?: number; randomNarrationMaxMessages?: number; worldSidebarEnabled?: boolean; autoWorldStateEnabled?: boolean; autoWorldStateMinMessages?: number; autoWorldStateMaxMessages?: number; writingStyle?: string } = {};
+	// Validate hex color format
+	const hexColorRegex = /^#[0-9a-fA-F]{6}$/;
+	if (userBubbleColor && !hexColorRegex.test(userBubbleColor)) {
+		return json({ error: 'Invalid bubble color format' }, { status: 400 });
+	}
+	if (userTextColor && !hexColorRegex.test(userTextColor)) {
+		return json({ error: 'Invalid text color format' }, { status: 400 });
+	}
+
+	const updateData: { chatLayout?: string; avatarStyle?: string; textCleanupEnabled?: boolean; autoWrapActions?: boolean; randomNarrationEnabled?: boolean; randomNarrationMinMessages?: number; randomNarrationMaxMessages?: number; worldSidebarEnabled?: boolean; autoWorldStateEnabled?: boolean; autoWorldStateMinMessages?: number; autoWorldStateMaxMessages?: number; writingStyle?: string; userBubbleColor?: string; userTextColor?: string } = {};
 	if (chatLayout) updateData.chatLayout = chatLayout;
 	if (avatarStyle) updateData.avatarStyle = avatarStyle;
 	if (typeof textCleanupEnabled === 'boolean') updateData.textCleanupEnabled = textCleanupEnabled;
@@ -91,8 +102,10 @@ export const PUT: RequestHandler = async ({ cookies, request }) => {
 	if (typeof autoWorldStateMinMessages === 'number') updateData.autoWorldStateMinMessages = autoWorldStateMinMessages;
 	if (typeof autoWorldStateMaxMessages === 'number') updateData.autoWorldStateMaxMessages = autoWorldStateMaxMessages;
 	if (typeof writingStyle === 'string') updateData.writingStyle = writingStyle;
+	if (typeof userBubbleColor === 'string') updateData.userBubbleColor = userBubbleColor;
+	if (typeof userTextColor === 'string') updateData.userTextColor = userTextColor;
 
 	await db.update(users).set(updateData).where(eq(users.id, parseInt(userId)));
 
-	return json({ success: true, chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages, worldSidebarEnabled, autoWorldStateEnabled, autoWorldStateMinMessages, autoWorldStateMaxMessages, writingStyle });
+	return json({ success: true, chatLayout, avatarStyle, textCleanupEnabled, autoWrapActions, randomNarrationEnabled, randomNarrationMinMessages, randomNarrationMaxMessages, worldSidebarEnabled, autoWorldStateEnabled, autoWorldStateMinMessages, autoWorldStateMaxMessages, writingStyle, userBubbleColor, userTextColor });
 };
