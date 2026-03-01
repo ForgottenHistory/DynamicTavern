@@ -70,6 +70,7 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 				locationName: location?.name || session.currentLocationId,
 				locationDescription: location?.description || '',
 				userName: userInfo.name,
+				userDescription: userInfo.description || '',
 				character: session.currentCharacterId
 					? await getCharacterInfo(session.currentCharacterId)
 					: null

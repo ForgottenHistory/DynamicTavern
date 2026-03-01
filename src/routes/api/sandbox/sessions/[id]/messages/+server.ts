@@ -106,6 +106,7 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 				locationName: location?.name || session.currentLocationId,
 				locationDescription: location?.description || '',
 				userName: userInfo.name,
+				userDescription: userInfo.description || '',
 				character: null,
 				history: content.trim()
 			});

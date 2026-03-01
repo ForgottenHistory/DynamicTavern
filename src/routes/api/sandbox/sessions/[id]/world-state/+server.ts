@@ -111,6 +111,60 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 	}
 };
 
+// PATCH - Update a specific attribute in world state
+export const PATCH: RequestHandler = async ({ params, cookies, request }) => {
+	const userId = cookies.get('userId');
+	if (!userId) {
+		return json({ error: 'Not authenticated' }, { status: 401 });
+	}
+
+	const sessionId = parseInt(params.id!);
+	if (isNaN(sessionId)) {
+		return json({ error: 'Invalid session ID' }, { status: 400 });
+	}
+
+	try {
+		const session = await sandboxService.getSession(sessionId, parseInt(userId));
+		if (!session) {
+			return json({ error: 'Session not found' }, { status: 404 });
+		}
+
+		if (!session.worldInfo) {
+			return json({ error: 'No world state to update' }, { status: 400 });
+		}
+
+		const { entityKey, attrName, value } = await request.json();
+		if (!entityKey || !attrName || value === undefined) {
+			return json({ error: 'Missing entityKey, attrName, or value' }, { status: 400 });
+		}
+
+		const parsed = JSON.parse(session.worldInfo);
+		const worldState: WorldStateData = parsed.worldState || parsed;
+
+		const entity = worldState[entityKey];
+		if (!entity) {
+			return json({ error: 'Entity not found' }, { status: 404 });
+		}
+
+		const attr = entity.attributes.find(a => a.name === attrName);
+		if (!attr) {
+			return json({ error: 'Attribute not found' }, { status: 404 });
+		}
+
+		attr.value = value;
+
+		await db
+			.update(sandboxSessions)
+			.set({ worldInfo: JSON.stringify({ worldState }) })
+			.where(eq(sandboxSessions.id, sessionId));
+
+		return json(worldState);
+	} catch (error) {
+		console.error('Failed to update world state:', error);
+		return json({ error: 'Failed to update world state' }, { status: 500 });
+	}
+};
+
 // DELETE - Clear world state for a sandbox session
 export const DELETE: RequestHandler = async ({ params, cookies }) => {
 	const userId = cookies.get('userId');

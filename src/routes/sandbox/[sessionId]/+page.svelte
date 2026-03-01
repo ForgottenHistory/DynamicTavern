@@ -234,17 +234,44 @@
 															{@const itemKey = `${entityKey}-${attr.name}`}
 
 															{#if attr.type === 'text' && typeof attr.value === 'string' && attr.value.trim()}
-																<div class="px-4 py-1.5 flex items-start gap-2">
-																	{#if icon}
-																		<svg class="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style="color: {icon.color}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={icon.path}/>
-																		</svg>
-																	{/if}
-																	<div>
+																{#if state.editingWorldKey === itemKey}
+																	<!-- Editing text attribute -->
+																	<div class="px-4 py-1.5">
 																		<span class="text-xs text-[var(--text-muted)] uppercase tracking-wide">{attr.name.charAt(0).toUpperCase() + attr.name.slice(1)}</span>
-																		<p class="text-sm text-[var(--text-secondary)]">{attr.value}</p>
+																		<input
+																			type="text"
+																			bind:value={state.editingWorldValue}
+																			onkeydown={(e) => { if (e.key === 'Enter') state.saveTextEdit(entityKey, attr.name); if (e.key === 'Escape') state.cancelEdit(); }}
+																			class="w-full mt-1 px-2 py-1 text-sm bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:border-[var(--accent-primary)]"
+																		/>
+																		<div class="flex gap-1 mt-1">
+																			<button onclick={() => state.saveTextEdit(entityKey, attr.name)} class="px-2 py-0.5 text-xs bg-[var(--accent-primary)] text-white rounded hover:opacity-90 transition">Save</button>
+																			<button onclick={state.cancelEdit} class="px-2 py-0.5 text-xs bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded hover:text-[var(--text-primary)] transition">Cancel</button>
+																		</div>
 																	</div>
-																</div>
+																{:else}
+																	<!-- Display text attribute -->
+																	<div class="group px-4 py-1.5 flex items-start gap-2">
+																		{#if icon}
+																			<svg class="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style="color: {icon.color}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={icon.path}/>
+																			</svg>
+																		{/if}
+																		<div class="flex-1">
+																			<span class="text-xs text-[var(--text-muted)] uppercase tracking-wide">{attr.name.charAt(0).toUpperCase() + attr.name.slice(1)}</span>
+																			<p class="text-sm text-[var(--text-secondary)]">{attr.value}</p>
+																		</div>
+																		<button
+																			onclick={() => state.startEditText(entityKey, attr.name, String(attr.value))}
+																			class="p-1 opacity-0 group-hover:opacity-100 hover:bg-[var(--border-primary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] rounded transition"
+																			title="Edit {attr.name}"
+																		>
+																			<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+																			</svg>
+																		</button>
+																	</div>
+																{/if}
 
 															{:else if attr.type === 'list' && Array.isArray(attr.value) && attr.value.length > 0}
 																<div class="px-4 py-1.5">
@@ -259,31 +286,76 @@
 																</div>
 																{#each attr.value as item, itemIdx}
 																	{@const listItemKey = `${itemKey}-${itemIdx}`}
-																	<div class="flex items-center px-4 py-1 hover:bg-[var(--bg-tertiary)] transition">
-																		<button
-																			onclick={() => state.toggleWorldItem(listItemKey)}
-																			class="flex-1 text-left flex items-center gap-1.5"
-																		>
-																			<svg class="w-3 h-3 text-[var(--text-muted)] transition-transform duration-200 flex-shrink-0 {state.expandedWorldItems.has(listItemKey) ? 'rotate-90' : ''}" fill="currentColor" viewBox="0 0 20 20">
-																				<path d="M6 6L14 10L6 14V6Z"/>
-																			</svg>
-																			<span class="text-sm text-[var(--text-secondary)]">{item.name}</span>
-																		</button>
-																		<button
-																			onclick={() => state.handleSceneAction('look_item', { owner: state.getEntityLabel(entityKey), itemName: item.name, itemDescription: item.description })}
-																			class="p-1 hover:bg-[var(--border-primary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] rounded transition"
-																			title="Look at {item.name}"
-																		>
-																			<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-																				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-																				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-																			</svg>
-																		</button>
-																	</div>
-																	{#if state.expandedWorldItems.has(listItemKey)}
-																		<div class="px-4 pb-1 pl-9" transition:slide={{ duration: 150 }}>
-																			<p class="text-xs text-[var(--text-muted)]">{item.description}</p>
+																	{#if state.editingListItem?.entityKey === entityKey && state.editingListItem?.attrName === attr.name && state.editingListItem?.itemIdx === itemIdx}
+																		<!-- Editing list item -->
+																		<div class="px-4 py-1.5">
+																			<input
+																				type="text"
+																				bind:value={state.editingItemName}
+																				onkeydown={(e) => { if (e.key === 'Enter') state.saveListItemEdit(); if (e.key === 'Escape') state.cancelEdit(); }}
+																				placeholder="Name"
+																				class="w-full px-2 py-1 text-sm bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:border-[var(--accent-primary)]"
+																			/>
+																			<input
+																				type="text"
+																				bind:value={state.editingItemDescription}
+																				onkeydown={(e) => { if (e.key === 'Enter') state.saveListItemEdit(); if (e.key === 'Escape') state.cancelEdit(); }}
+																				placeholder="Description"
+																				class="w-full mt-1 px-2 py-1 text-xs bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:border-[var(--accent-primary)]"
+																			/>
+																			<div class="flex gap-1 mt-1">
+																				<button onclick={state.saveListItemEdit} class="px-2 py-0.5 text-xs bg-[var(--accent-primary)] text-white rounded hover:opacity-90 transition">Save</button>
+																				<button onclick={state.cancelEdit} class="px-2 py-0.5 text-xs bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded hover:text-[var(--text-primary)] transition">Cancel</button>
+																			</div>
 																		</div>
+																	{:else}
+																		<!-- Display list item -->
+																		<div class="group flex items-center px-4 py-1 hover:bg-[var(--bg-tertiary)] transition">
+																			<button
+																				onclick={() => state.toggleWorldItem(listItemKey)}
+																				class="flex-1 text-left flex items-center gap-1.5"
+																			>
+																				<svg class="w-3 h-3 text-[var(--text-muted)] transition-transform duration-200 flex-shrink-0 {state.expandedWorldItems.has(listItemKey) ? 'rotate-90' : ''}" fill="currentColor" viewBox="0 0 20 20">
+																					<path d="M6 6L14 10L6 14V6Z"/>
+																				</svg>
+																				<span class="text-sm text-[var(--text-secondary)]">{item.name}</span>
+																			</button>
+																			<div class="flex items-center gap-0.5">
+																				<button
+																					onclick={() => state.startEditListItem(entityKey, attr.name, itemIdx, item)}
+																					class="p-1 opacity-0 group-hover:opacity-100 hover:bg-[var(--border-primary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] rounded transition"
+																					title="Edit {item.name}"
+																				>
+																					<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+																					</svg>
+																				</button>
+																				<button
+																					onclick={() => state.deleteListItem(entityKey, attr.name, itemIdx)}
+																					class="p-1 opacity-0 group-hover:opacity-100 hover:bg-[var(--border-primary)] text-[var(--text-muted)] hover:text-red-400 rounded transition"
+																					title="Remove {item.name}"
+																				>
+																					<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+																					</svg>
+																				</button>
+																				<button
+																					onclick={() => state.handleSceneAction('look_item', { owner: state.getEntityLabel(entityKey), itemName: item.name, itemDescription: item.description })}
+																					class="p-1 hover:bg-[var(--border-primary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] rounded transition"
+																					title="Look at {item.name}"
+																				>
+																					<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+																						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+																					</svg>
+																				</button>
+																			</div>
+																		</div>
+																		{#if state.expandedWorldItems.has(listItemKey)}
+																			<div class="px-4 pb-1 pl-9" transition:slide={{ duration: 150 }}>
+																				<p class="text-xs text-[var(--text-muted)]">{item.description}</p>
+																			</div>
+																		{/if}
 																	{/if}
 																{/each}
 															{/if}

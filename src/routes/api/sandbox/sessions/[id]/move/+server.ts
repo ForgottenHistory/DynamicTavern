@@ -56,6 +56,7 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 			locationName: location?.name || locationId,
 			locationDescription: location?.description || '',
 			userName: userInfo.name,
+			userDescription: userInfo.description || '',
 			character: character
 				? {
 						name: character.name,

@@ -39,6 +39,13 @@ export function createSandboxState(options: SandboxStateOptions) {
 	let expandedWorldSections = $state<Set<string>>(new Set(['character']));
 	let expandedWorldItems = $state<Set<string>>(new Set());
 
+	// World state editing
+	let editingWorldKey = $state<string | null>(null);
+	let editingWorldValue = $state<string>('');
+	let editingListItem = $state<{ entityKey: string; attrName: string; itemIdx: number } | null>(null);
+	let editingItemName = $state('');
+	let editingItemDescription = $state('');
+
 	// User settings
 	let chatLayout = $state<'bubbles' | 'discord'>('bubbles');
 	let avatarStyle = $state<'circle' | 'rounded'>('circle');
@@ -90,6 +97,7 @@ export function createSandboxState(options: SandboxStateOptions) {
 			if (messages.length === 0 && location && world) {
 				await generateInitialNarration();
 			}
+			setTimeout(() => options.onScrollToBottom(), 100);
 		} catch (e) {
 			error = 'Failed to load session';
 			console.error(e);
@@ -403,6 +411,62 @@ export function createSandboxState(options: SandboxStateOptions) {
 		expandedWorldItems = newSet;
 	}
 
+	// --- World state editing ---
+
+	function startEditText(entityKey: string, attrName: string, currentValue: string) {
+		editingWorldKey = `${entityKey}-${attrName}`;
+		editingWorldValue = currentValue;
+		editingListItem = null;
+	}
+
+	function startEditListItem(entityKey: string, attrName: string, itemIdx: number, item: { name: string; description: string }) {
+		editingListItem = { entityKey, attrName, itemIdx };
+		editingItemName = item.name;
+		editingItemDescription = item.description;
+		editingWorldKey = null;
+	}
+
+	function cancelEdit() {
+		editingWorldKey = null;
+		editingListItem = null;
+	}
+
+	async function saveTextEdit(entityKey: string, attrName: string) {
+		const updated = await api.updateWorldState(options.sessionId, entityKey, attrName, editingWorldValue);
+		if (updated) worldState = updated;
+		editingWorldKey = null;
+	}
+
+	async function saveListItemEdit() {
+		if (!editingListItem || !worldState) return;
+		const { entityKey, attrName, itemIdx } = editingListItem;
+		const entity = worldState[entityKey];
+		if (!entity) return;
+
+		const attr = entity.attributes.find(a => a.name === attrName);
+		if (!attr || attr.type !== 'list' || !Array.isArray(attr.value)) return;
+
+		const newList = [...attr.value];
+		newList[itemIdx] = { name: editingItemName, description: editingItemDescription };
+
+		const updated = await api.updateWorldState(options.sessionId, entityKey, attrName, newList);
+		if (updated) worldState = updated;
+		editingListItem = null;
+	}
+
+	async function deleteListItem(entityKey: string, attrName: string, itemIdx: number) {
+		if (!worldState) return;
+		const entity = worldState[entityKey];
+		if (!entity) return;
+
+		const attr = entity.attributes.find(a => a.name === attrName);
+		if (!attr || attr.type !== 'list' || !Array.isArray(attr.value)) return;
+
+		const newList = attr.value.filter((_, i) => i !== itemIdx);
+		const updated = await api.updateWorldState(options.sessionId, entityKey, attrName, newList);
+		if (updated) worldState = updated;
+	}
+
 	// --- Settings ---
 
 	async function loadSettings() {
@@ -448,6 +512,14 @@ export function createSandboxState(options: SandboxStateOptions) {
 		set worldExpanded(v: boolean) { worldExpanded = v; },
 		get expandedWorldSections() { return expandedWorldSections; },
 		get expandedWorldItems() { return expandedWorldItems; },
+		get editingWorldKey() { return editingWorldKey; },
+		get editingWorldValue() { return editingWorldValue; },
+		set editingWorldValue(v: string) { editingWorldValue = v; },
+		get editingListItem() { return editingListItem; },
+		get editingItemName() { return editingItemName; },
+		set editingItemName(v: string) { editingItemName = v; },
+		get editingItemDescription() { return editingItemDescription; },
+		set editingItemDescription(v: string) { editingItemDescription = v; },
 
 		// Derived
 		get hasAssistantMessages() { return hasAssistantMessages; },
@@ -477,6 +549,14 @@ export function createSandboxState(options: SandboxStateOptions) {
 		getEntityLabel,
 		getAttributeIcon,
 		toggleWorldSection,
-		toggleWorldItem
+		toggleWorldItem,
+
+		// World state editing
+		startEditText,
+		startEditListItem,
+		cancelEdit,
+		saveTextEdit,
+		saveListItemEdit,
+		deleteListItem
 	};
 }

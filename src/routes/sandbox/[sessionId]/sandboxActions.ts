@@ -156,6 +156,21 @@ export async function generateWorldState(sessionId: number): Promise<WorldStateD
 	return null;
 }
 
+export async function updateWorldState(
+	sessionId: number,
+	entityKey: string,
+	attrName: string,
+	value: string | { name: string; description: string }[]
+): Promise<WorldStateData | null> {
+	const res = await fetch(`/api/sandbox/sessions/${sessionId}/world-state`, {
+		method: 'PATCH',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ entityKey, attrName, value })
+	});
+	if (res.ok) return res.json();
+	return null;
+}
+
 export async function clearWorldState(sessionId: number): Promise<boolean> {
 	const res = await fetch(`/api/sandbox/sessions/${sessionId}/world-state`, {
 		method: 'DELETE'
