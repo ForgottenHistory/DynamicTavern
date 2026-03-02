@@ -59,9 +59,10 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 			return json({ error: 'Session not found' }, { status: 404 });
 		}
 
-		const character = await sandboxService.getCurrentCharacter(session);
-		if (!character) {
-			return json({ error: 'No character present' }, { status: 400 });
+		// Get all active characters
+		const activeCharacters = await sandboxService.getActiveCharacters(sessionId);
+		if (activeCharacters.length === 0) {
+			return json({ error: 'No characters present' }, { status: 400 });
 		}
 
 		// Get user info
@@ -74,13 +75,13 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 		// Format chat history
 		const chatHistory = last10
 			.map((m) => {
-				const name = m.role === 'user' ? userInfo.name : (m.role === 'assistant' ? (m.senderName || character.name) : 'Narrator');
+				const name = m.role === 'user' ? userInfo.name : (m.role === 'assistant' ? (m.senderName || 'Character') : 'Narrator');
 				return `${name}: ${m.content}`;
 			})
 			.join('\n\n');
 
 		// Get previous world state if it exists
-		let previousState = null;
+		let previousState: WorldStateData | null = null;
 		if (session.worldInfo) {
 			try {
 				const parsed = JSON.parse(session.worldInfo);
@@ -88,10 +89,21 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 			} catch { /* ignore */ }
 		}
 
-		// Generate world state
-		const worldState = await clothesGenerationService.generateClothes({
-			characterName: character.name,
-			characterDescription: character.description || '',
+		// Build character info for all active characters
+		const characterInfos = activeCharacters.map(c => {
+			let description = c.description || '';
+			if (!description) {
+				try {
+					const cardData = JSON.parse(c.cardData);
+					description = cardData.data?.description || cardData.description || '';
+				} catch { /* ignore */ }
+			}
+			return { name: c.name, description };
+		});
+
+		// Generate world state for all characters
+		const worldState = await clothesGenerationService.generateWorldState({
+			characters: characterInfos,
 			scenario: '',
 			userName: userInfo.name,
 			chatHistory,

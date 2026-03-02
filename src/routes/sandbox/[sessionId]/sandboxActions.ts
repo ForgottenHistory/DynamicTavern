@@ -64,9 +64,11 @@ export async function sendMessage(sessionId: number, content: string): Promise<{
 	return response.json();
 }
 
-export async function generateResponse(sessionId: number): Promise<{ messages: Message[] }> {
+export async function generateResponse(sessionId: number, characterId?: number): Promise<{ messages: Message[] }> {
 	const response = await fetch(`/api/sandbox/sessions/${sessionId}/generate`, {
-		method: 'POST'
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ characterId })
 	});
 	if (!response.ok) throw new Error('Failed to generate');
 	return response.json();

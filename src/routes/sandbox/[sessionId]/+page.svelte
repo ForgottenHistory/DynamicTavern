@@ -222,25 +222,30 @@
 												<p class="text-xs text-[var(--text-muted)] line-clamp-1">{char.description}</p>
 											{/if}
 										</div>
-										<button
-											onclick={() => state.removeCharacter(char.id)}
-											class="p-1 opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-red-400 hover:bg-[var(--bg-tertiary)] rounded transition"
-											title="Remove {char.name}"
-										>
-											<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-											</svg>
-										</button>
+										<div class="flex items-center gap-1">
+											<button
+												onclick={() => state.generate(char.id)}
+												disabled={state.generating}
+												class="p-1 text-[var(--text-muted)] hover:text-[var(--accent-primary)] hover:bg-[var(--bg-tertiary)] rounded transition disabled:opacity-50"
+												title="Prompt {char.name}"
+											>
+												<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+												</svg>
+											</button>
+											<button
+												onclick={() => state.removeCharacter(char.id)}
+												class="p-1 opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-red-400 hover:bg-[var(--bg-tertiary)] rounded transition"
+												title="Remove {char.name}"
+											>
+												<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+												</svg>
+											</button>
+										</div>
 									</div>
 								{/each}
 							</div>
-							<button
-								onclick={state.generate}
-								disabled={state.generating}
-								class="mt-3 w-full px-3 py-2 text-sm bg-[var(--bg-tertiary)] text-[var(--text-primary)] rounded-lg hover:bg-[var(--accent-primary)]/10 transition disabled:opacity-50"
-							>
-								{state.generating ? 'Generating...' : 'Prompt action'}
-							</button>
 						{:else}
 							<p class="text-sm text-[var(--text-muted)] italic">No one here</p>
 						{/if}

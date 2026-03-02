@@ -184,13 +184,13 @@ export function createSandboxState(options: SandboxStateOptions) {
 		}
 	}
 
-	async function generate() {
+	async function generate(characterId?: number) {
 		if (generating || characters.length === 0) return;
 		generating = true;
 		error = null;
 
 		try {
-			const result = await api.generateResponse(options.sessionId);
+			const result = await api.generateResponse(options.sessionId, characterId);
 			messages = result.messages;
 			options.onScrollToBottom();
 		} catch (e) {
@@ -378,9 +378,10 @@ export function createSandboxState(options: SandboxStateOptions) {
 	// --- World state display helpers ---
 
 	function getEntityLabel(entityKey: string): string {
-		if (entityKey === 'character') return primaryCharacter?.name ?? 'Character';
 		if (entityKey === 'user') return 'You';
-		return entityKey.charAt(0).toUpperCase() + entityKey.slice(1);
+		// Entity keys are now character names directly (or legacy 'character' key)
+		if (entityKey === 'character') return primaryCharacter?.name ?? 'Character';
+		return entityKey;
 	}
 
 	function getAttributeIcon(attrName: string): { path: string; color: string } | null {

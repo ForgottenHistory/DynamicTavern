@@ -8,7 +8,7 @@ import { llmSettingsFileService } from '$lib/server/services/llmSettingsFileServ
 import { llmLogService } from '$lib/server/services/llmLogService';
 
 // POST - Generate character response without user input
-export const POST: RequestHandler = async ({ params, cookies }) => {
+export const POST: RequestHandler = async ({ params, cookies, request }) => {
 	const userId = cookies.get('userId');
 	if (!userId) {
 		return json({ error: 'Not authenticated' }, { status: 401 });
@@ -25,11 +25,26 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 			return json({ error: 'Session not found' }, { status: 404 });
 		}
 
-		// Pick a random active character to generate response
+		// Check if a specific character was requested
+		let requestedCharacterId: number | undefined;
+		try {
+			const body = await request.json();
+			requestedCharacterId = body.characterId;
+		} catch {
+			// No body or invalid JSON — pick randomly
+		}
+
+		// Pick the requested character or a random active one
 		const activeCharacters = await sandboxService.getActiveCharacters(sessionId);
-		const character = activeCharacters.length > 0
-			? activeCharacters[Math.floor(Math.random() * activeCharacters.length)]
-			: null;
+		let character = null;
+		if (requestedCharacterId) {
+			character = activeCharacters.find(c => c.id === requestedCharacterId) || null;
+		}
+		if (!character) {
+			character = activeCharacters.length > 0
+				? activeCharacters[Math.floor(Math.random() * activeCharacters.length)]
+				: null;
+		}
 		if (!character) {
 			return json({ error: 'No character present to generate response' }, { status: 400 });
 		}

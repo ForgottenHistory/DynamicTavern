@@ -65,11 +65,11 @@ function replaceTemplateVariables(
 /**
  * Format existing world state into readable text for the prompt
  */
-function formatPreviousState(state: WorldStateData, charName: string): string {
+function formatPreviousState(state: WorldStateData): string {
 	const parts: string[] = [];
 
 	for (const [entityKey, entity] of Object.entries(state)) {
-		const label = entityKey === 'character' ? charName : entityKey === 'user' ? 'You' : entityKey;
+		const label = entityKey === 'user' ? 'You' : entityKey;
 		const lines: string[] = [`${label}:`];
 
 		for (const attr of entity.attributes) {
@@ -267,62 +267,133 @@ Guidelines:
 	}
 
 	/**
-	 * Generate world state for character and user
+	 * Build a prompt for multiple characters by repeating the output format section
 	 */
-	async generateWorldState({
-		characterName,
-		characterDescription,
-		scenario,
-		userName,
-		chatHistory,
-		previousState
-	}: {
-		characterName: string;
-		characterDescription: string;
+	private buildMultiCharPrompt(
+		promptTemplate: string,
+		characters: { name: string; description: string }[],
+		userName: string,
+		scenario: string,
+		chatHistory: string,
+		previousStateText: string
+	): string {
+		const charNames = characters.map(c => c.name).join(', ');
+		const charDescriptions = characters.map(c => `${c.name}: ${c.description}`).join('\n');
+
+		// Build output format for each character
+		const outputFormats = characters.map(c => `${c.name}:\nmood: [1-3 words]\nthinking: [inner monologue, can be expressive]\nposition: [location, posture]\nclothes:\n- [item]: [color/style keywords]\nbody:\n- [feature]: [brief description]`).join('\n\n');
+
+		// Build a custom prompt for multiple characters
+		return `Generate the current state for each character present in the scene.
+
+Characters present: ${charNames}
+
+${charDescriptions}
+
+Scenario: ${scenario || 'A casual encounter'}
+
+Recent conversation:
+${chatHistory || '(No conversation yet)'}
+
+Previous state:
+${previousStateText || '(None)'}
+
+Output the state for EACH character, using their name as the header:
+
+${outputFormats}
+
+${userName}:
+position: [location, posture]
+
+Guidelines:
+- Keep values SHORT - use keywords, not sentences (except thinking)
+- Mood: 1-3 emotion words (cheerful, anxious, relaxed)
+- Thinking: Character's inner voice, can be expressive/conversational
+- Position: Location + posture, comma-separated
+- Clothes: 3-5 items, one per line starting with "- ", color/style keywords only
+- Body: 2-4 features, one per line starting with "- ", descriptive keywords
+- NO prose for objective fields (mood, position, clothes, body)
+- Base state on conversation context
+- If previous state is provided, use it as a baseline and only change what the conversation warrants
+- Output state for ALL characters listed above`;
+	}
+
+	/**
+	 * Generate world state for multiple characters and user
+	 */
+	async generateWorldState(params: {
+		characters?: { name: string; description: string }[];
+		characterName?: string;
+		characterDescription?: string;
 		scenario: string;
 		userName: string;
 		chatHistory?: string;
 		previousState?: WorldStateData | null;
 	}): Promise<WorldStateData> {
+		// Normalize to characters array (support legacy single-character call)
+		const characters = params.characters || [
+			{ name: params.characterName || 'Character', description: params.characterDescription || '' }
+		];
+
 		try {
-			console.log(`🌍 Generating world state for ${characterName} and ${userName}...`);
+			const charNames = characters.map(c => c.name).join(', ');
+			console.log(`🌍 Generating world state for ${charNames} and ${params.userName}...`);
 
 			const settings = decisionEngineSettingsService.getSettings();
-			const promptTemplate = await this.loadPrompt();
 
-			const previousStateText = previousState ? formatPreviousState(previousState, characterName) : '';
+			const previousStateText = params.previousState ? formatPreviousState(params.previousState) : '';
 
-			const prompt = replaceTemplateVariables(promptTemplate, {
-				char: characterName,
-				user: userName,
-				scenario: scenario || 'A casual encounter',
-				description: characterDescription || '',
-				history: chatHistory || '(No conversation yet)',
-				previous_state: previousStateText
-			});
+			let prompt: string;
+			if (characters.length === 1) {
+				// Single character — use the template file as before
+				const promptTemplate = await this.loadPrompt();
+				prompt = replaceTemplateVariables(promptTemplate, {
+					char: characters[0].name,
+					user: params.userName,
+					scenario: params.scenario || 'A casual encounter',
+					description: characters[0].description || '',
+					history: params.chatHistory || '(No conversation yet)',
+					previous_state: previousStateText
+				});
+			} else {
+				// Multiple characters — build a multi-character prompt
+				const promptTemplate = await this.loadPrompt();
+				prompt = this.buildMultiCharPrompt(
+					promptTemplate,
+					characters,
+					params.userName,
+					params.scenario,
+					params.chatHistory || '(No conversation yet)',
+					previousStateText
+				);
+			}
 
 			const result = await callLlm({
 				messages: [{ role: 'user', content: prompt }],
 				settings,
 				logType: 'world',
-				logCharacterName: characterName
+				logCharacterName: charNames
 			});
 
+			// Build entity name map: each character name maps to itself as the key
+			const entityNames: Record<string, string> = {};
+			for (const c of characters) {
+				entityNames[c.name] = c.name;
+			}
+			entityNames['user'] = params.userName;
+
 			// Parse world state from response
-			const worldState = parseWorldState(result.content, {
-				character: characterName,
-				user: userName
-			});
+			const worldState = parseWorldState(result.content, entityNames);
 			console.log(`🌍 Generated world state:`, JSON.stringify(worldState, null, 2));
 
 			// Return parsed or default if empty
 			if (hasContent(worldState)) {
 				return worldState;
 			}
-			return this.getDefaultWorldState();
+			return this.getDefaultWorldState(characters);
 		} catch (error: any) {
 			console.error('❌ Failed to generate world state:', error.message);
-			return this.getDefaultWorldState();
+			return this.getDefaultWorldState(characters);
 		}
 	}
 
@@ -335,12 +406,24 @@ Guidelines:
 		chatHistory?: string;
 		previousState?: WorldStateData | null;
 	}): Promise<WorldStateData> {
-		return this.generateWorldState(params);
+		return this.generateWorldState({
+			characters: [{ name: params.characterName, description: params.characterDescription }],
+			scenario: params.scenario,
+			userName: params.userName,
+			chatHistory: params.chatHistory,
+			previousState: params.previousState
+		});
 	}
 
-	private getDefaultWorldState(): WorldStateData {
-		return {
-			character: {
+	private getDefaultWorldState(characters?: { name: string; description: string }[]): WorldStateData {
+		const state: WorldStateData = {};
+
+		const charList = characters && characters.length > 0
+			? characters
+			: [{ name: 'Character', description: '' }];
+
+		for (const c of charList) {
+			state[c.name] = {
 				attributes: [
 					{ name: 'mood', type: 'text', value: 'neutral' },
 					{ name: 'position', type: 'text', value: 'standing nearby' },
@@ -354,13 +437,16 @@ Guidelines:
 						]
 					}
 				]
-			},
-			user: {
-				attributes: [
-					{ name: 'position', type: 'text', value: 'standing nearby' }
-				]
-			}
+			};
+		}
+
+		state['user'] = {
+			attributes: [
+				{ name: 'position', type: 'text', value: 'standing nearby' }
+			]
 		};
+
+		return state;
 	}
 }
 
