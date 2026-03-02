@@ -8,9 +8,10 @@
 		userName?: string;
 		textCleanupEnabled?: boolean;
 		autoWrapActions?: boolean;
+		characterColors?: Map<string, string>; // character name → color hex
 	}
 
-	let { content, role, charName = 'Character', userName = 'User', textCleanupEnabled = true, autoWrapActions = false }: Props = $props();
+	let { content, role, charName = 'Character', userName = 'User', textCleanupEnabled = true, autoWrapActions = false, characterColors }: Props = $props();
 
 	// Check if this is an SD image message (reactive to content changes)
 	let sdImageMatch = $derived(content.match(/^\[SD_IMAGE\](.+?)\|(.+?)\[\/SD_IMAGE\]$/s));
@@ -176,22 +177,39 @@
 
 	// Highlight names in text (called after markdown processing)
 	function highlightNames(html: string): string {
-		const charParts = getNameParts(charName);
+		// Build all character name parts with their colors
+		const allCharParts: { name: string; color?: string }[] = [];
+
+		// Add names from characterColors map (multi-character support)
+		if (characterColors) {
+			for (const [name, color] of characterColors) {
+				for (const part of getNameParts(name)) {
+					allCharParts.push({ name: part, color });
+				}
+			}
+		}
+
+		// Fall back to charName if no characterColors provided (or add it as default)
+		if (!characterColors || characterColors.size === 0) {
+			for (const part of getNameParts(charName)) {
+				allCharParts.push({ name: part });
+			}
+		}
+
 		const userParts = getNameParts(userName);
 
 		// Create regex patterns - match whole words only, case-insensitive
 		// Process longer names first to avoid partial replacements
-		const allParts: { name: string; isChar: boolean }[] = [
-			...charParts.map(p => ({ name: p, isChar: true })),
+		const allParts: { name: string; isChar: boolean; color?: string }[] = [
+			...allCharParts.map(p => ({ name: p.name, isChar: true, color: p.color })),
 			...userParts.map(p => ({ name: p, isChar: false }))
 		].sort((a, b) => b.name.length - a.name.length);
 
 		let result = html;
-		for (const { name, isChar } of allParts) {
+		for (const { name, isChar, color } of allParts) {
 			// Word boundary regex - escape special chars in name
 			const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 			const regex = new RegExp(`\\b(${escaped})\\b`, 'gi');
-			const className = isChar ? 'rp-char-name' : 'rp-user-name';
 
 			// Only replace if not already inside a tag or span
 			result = result.replace(regex, (match, captured, offset) => {
@@ -209,6 +227,10 @@
 					if (lastOpenSpan > lastCloseSpan) return match;
 				}
 
+				if (isChar && color) {
+					return `<span class="rp-char-name" style="color: ${color}">${captured}</span>`;
+				}
+				const className = isChar ? 'rp-char-name' : 'rp-user-name';
 				return `<span class="${className}">${captured}</span>`;
 			});
 		}

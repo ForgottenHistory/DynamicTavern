@@ -40,7 +40,9 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 			return json({ error: 'Session not found' }, { status: 404 });
 		}
 
-		const character = await sandboxService.getCurrentCharacter(session);
+		// Use first active character for scene action context
+		const activeCharacters = await sandboxService.getActiveCharacters(sessionId);
+		const character = activeCharacters.length > 0 ? activeCharacters[0] : null;
 		if (!character) {
 			return json({ error: 'No character present' }, { status: 400 });
 		}

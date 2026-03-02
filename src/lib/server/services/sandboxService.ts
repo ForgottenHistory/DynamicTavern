@@ -2,6 +2,7 @@ import { db } from '$lib/server/db';
 import { sandboxSessions, messages, characters, type Character, type Message } from '$lib/server/db/schema';
 import { eq, and, gte, asc } from 'drizzle-orm';
 import { worldService } from './worldService';
+import { sandboxParticipantService } from './sandboxParticipantService';
 import type { World } from '$lib/types/sandbox';
 
 class SandboxService {
@@ -70,7 +71,7 @@ class SandboxService {
 		locationId: string
 	): Promise<{
 		session: typeof sandboxSessions.$inferSelect;
-		character: Character | null;
+		characters: Character[];
 	} | null> {
 		const session = await this.getSession(sessionId, userId);
 		if (!session) return null;
@@ -83,6 +84,9 @@ class SandboxService {
 			return null;
 		}
 
+		// Deactivate all current participants
+		await sandboxParticipantService.deactivateAll(sessionId);
+
 		// Spawn a character at the new location
 		const location = worldService.getLocation(world, locationId);
 		const character = await this.spawnCharacter(
@@ -90,6 +94,11 @@ class SandboxService {
 			location?.characterFilters !== null,
 			world.spawnChance
 		);
+
+		// Add spawned character to participants
+		if (character) {
+			await sandboxParticipantService.addCharacterToScene(sessionId, character.id);
+		}
 
 		// Update location
 		const [updated] = await db
@@ -102,7 +111,9 @@ class SandboxService {
 			.where(and(eq(sandboxSessions.id, sessionId), eq(sandboxSessions.userId, userId)))
 			.returning();
 
-		return { session: updated, character };
+		const activeCharacters = await sandboxParticipantService.getActiveCharacters(sessionId);
+
+		return { session: updated, characters: activeCharacters };
 	}
 
 	/**
@@ -273,13 +284,20 @@ class SandboxService {
 	}
 
 	/**
-	 * Update the current character for a session
+	 * Update the current character for a session (also adds to participants if not present)
 	 */
 	async setCurrentCharacter(
 		sessionId: number,
 		userId: number,
 		characterId: number | null
 	): Promise<boolean> {
+		if (characterId) {
+			const inScene = await sandboxParticipantService.isCharacterInScene(sessionId, characterId);
+			if (!inScene) {
+				await sandboxParticipantService.addCharacterToScene(sessionId, characterId);
+			}
+		}
+
 		const result = await db
 			.update(sandboxSessions)
 			.set({
@@ -292,9 +310,17 @@ class SandboxService {
 	}
 
 	/**
-	 * Get the current character for a session
+	 * Get a random active character for a session.
+	 * Falls back to currentCharacterId if no participants (legacy).
 	 */
 	async getCurrentCharacter(session: typeof sandboxSessions.$inferSelect): Promise<Character | null> {
+		// Try participants first
+		const activeChars = await sandboxParticipantService.getActiveCharacters(session.id);
+		if (activeChars.length > 0) {
+			return activeChars[Math.floor(Math.random() * activeChars.length)];
+		}
+
+		// Legacy fallback
 		if (!session.currentCharacterId) return null;
 
 		const [character] = await db
@@ -304,6 +330,13 @@ class SandboxService {
 			.limit(1);
 
 		return character || null;
+	}
+
+	/**
+	 * Get all active characters in a session
+	 */
+	async getActiveCharacters(sessionId: number): Promise<Character[]> {
+		return sandboxParticipantService.getActiveCharacters(sessionId);
 	}
 }
 

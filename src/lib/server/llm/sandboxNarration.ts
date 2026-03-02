@@ -28,6 +28,40 @@ Describe what {{user}} sees as they enter {{location_name}} in 2-3 sentences. Se
 Style: {{narration_style}}
 {{/if}}`;
 
+const DEFAULT_SANDBOX_CHARACTER_ENTER_PROMPT = `You are a narrator for a sandbox exploration scene.
+
+Location: {{location_name}}
+{{location_description}}
+
+{{#if character}}
+{{character_name}} has just arrived.
+{{character_description}}
+{{/if}}
+
+The user's name is {{user}}.
+{{#if user_description}}
+{{user_description}}
+{{/if}}
+
+Describe {{character_name}} entering {{location_name}} and {{user}} noticing them. 1-2 sentences, set the tone for an encounter.`;
+
+const DEFAULT_SANDBOX_CHARACTER_LEAVE_PROMPT = `You are a narrator for a sandbox exploration scene.
+
+Location: {{location_name}}
+{{location_description}}
+
+{{#if character}}
+{{character_name}} is leaving.
+{{character_description}}
+{{/if}}
+
+The user's name is {{user}}.
+{{#if user_description}}
+{{user_description}}
+{{/if}}
+
+Describe {{character_name}} departing from {{location_name}} and {{user}} watching them leave. 1-2 sentences, brief and natural.`;
+
 const DEFAULT_SANDBOX_EXPLORE_PROMPT = `You are a narrator for a sandbox exploration scene.
 
 Location: {{location_name}}
@@ -78,7 +112,7 @@ function getRandomNarrationStyle(characterName: string, userName: string, locati
 
 export interface SandboxNarrationOptions {
 	userId: number;
-	locationType: 'enter' | 'explore';
+	locationType: 'enter' | 'explore' | 'character_enter' | 'character_leave';
 	locationName: string;
 	locationDescription: string;
 	userName: string;
@@ -112,14 +146,25 @@ function processConditionals(template: string, variables: Record<string, any>): 
 /**
  * Load sandbox prompt from file
  */
-async function loadSandboxPrompt(type: 'enter' | 'explore'): Promise<string> {
+async function loadSandboxPrompt(type: 'enter' | 'explore' | 'character_enter' | 'character_leave'): Promise<string> {
+	const filenameMap: Record<string, string> = {
+		enter: 'sandbox_location.txt',
+		explore: 'sandbox_explore.txt',
+		character_enter: 'sandbox_character_enter.txt',
+		character_leave: 'sandbox_character_leave.txt'
+	};
+	const defaultMap: Record<string, string> = {
+		enter: DEFAULT_SANDBOX_LOCATION_PROMPT,
+		explore: DEFAULT_SANDBOX_EXPLORE_PROMPT,
+		character_enter: DEFAULT_SANDBOX_CHARACTER_ENTER_PROMPT,
+		character_leave: DEFAULT_SANDBOX_CHARACTER_LEAVE_PROMPT
+	};
+
 	try {
-		const filename = type === 'enter' ? 'sandbox_location.txt' : 'sandbox_explore.txt';
-		const filePath = path.join(PROMPTS_DIR, filename);
+		const filePath = path.join(PROMPTS_DIR, filenameMap[type]);
 		return await fs.readFile(filePath, 'utf-8');
 	} catch {
-		// File doesn't exist, return default
-		return type === 'enter' ? DEFAULT_SANDBOX_LOCATION_PROMPT : DEFAULT_SANDBOX_EXPLORE_PROMPT;
+		return defaultMap[type];
 	}
 }
 
@@ -170,11 +215,15 @@ export async function generateSandboxNarration(
 		.replace(/\{\{narration_style\}\}/g, narrationStyle)
 		.replace(/\{\{history\}\}/g, history || '');
 
-	// Format as system message
+	// Format as system + user message (user message required by many LLM providers)
 	const formattedMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
 		{
 			role: 'system',
 			content: narratorPrompt.trim()
+		},
+		{
+			role: 'user',
+			content: 'Narrate the scene.'
 		}
 	];
 

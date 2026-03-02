@@ -3,6 +3,38 @@
 	import MessageBubble from './MessageBubble.svelte';
 	import MessageRow from './MessageRow.svelte';
 
+	// Palette of distinct colors for different characters
+	const CHARACTER_COLORS = [
+		'#06b6d4', // cyan
+		'#a78bfa', // violet
+		'#f472b6', // pink
+		'#fb923c', // orange
+		'#4ade80', // green
+		'#facc15', // yellow
+		'#f87171', // red
+		'#38bdf8', // sky
+		'#c084fc', // purple
+		'#34d399', // emerald
+	];
+
+	// Parse hex color to RGB
+	function hexToRgb(hex: string): [number, number, number] {
+		const h = hex.replace('#', '');
+		return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+	}
+
+	// Simple RGB distance — threshold of 80 filters out perceptually similar colors
+	function colorDistance(a: string, b: string): number {
+		const [r1, g1, b1] = hexToRgb(a);
+		const [r2, g2, b2] = hexToRgb(b);
+		return Math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2);
+	}
+
+	// Filter palette to exclude colors too similar to the user's bubble color
+	const availableColors = $derived(
+		CHARACTER_COLORS.filter(c => colorDistance(c, userBubbleColor) > 80)
+	);
+
 	interface Props {
 		messages: Message[];
 		loading: boolean;
@@ -17,13 +49,66 @@
 		textCleanupEnabled?: boolean;
 		autoWrapActions?: boolean;
 		userBubbleColor?: string;
+		sceneCharacters?: { id: number; name: string }[];
 		onSwipe: (messageId: number, direction: 'left' | 'right') => void;
 		onSaveEdit: (messageId: number, index: number, content: string) => void;
 		onDelete: (messageId: number, index: number) => void;
 		onBranch?: (messageId: number) => void;
 	}
 
-	let { messages, loading, isTyping, generating, charName, userName, charAvatar, userAvatar, chatLayout = 'bubbles', avatarStyle = 'circle', textCleanupEnabled = true, autoWrapActions = false, userBubbleColor = '#14b8a6', onSwipe, onSaveEdit, onDelete, onBranch }: Props = $props();
+	let { messages, loading, isTyping, generating, charName, userName, charAvatar, userAvatar, chatLayout = 'bubbles', avatarStyle = 'circle', textCleanupEnabled = true, autoWrapActions = false, userBubbleColor = '#14b8a6', sceneCharacters, onSwipe, onSaveEdit, onDelete, onBranch }: Props = $props();
+
+	// Build a stable color map: characterId → color, assigned in order of first appearance
+	// Also seeds from sceneCharacters so characters get colors before they speak
+	// Uses availableColors which excludes colors too similar to userBubbleColor
+	const characterColorMap = $derived.by(() => {
+		const colors = availableColors;
+		const map = new Map<number, string>();
+		let colorIndex = 0;
+		// First, assign colors from message history (stable ordering)
+		for (const msg of messages) {
+			if (msg.characterId && !map.has(msg.characterId)) {
+				map.set(msg.characterId, colors[colorIndex % colors.length]);
+				colorIndex++;
+			}
+		}
+		// Then, assign colors to scene characters who haven't spoken yet
+		if (sceneCharacters) {
+			for (const char of sceneCharacters) {
+				if (!map.has(char.id)) {
+					map.set(char.id, colors[colorIndex % colors.length]);
+					colorIndex++;
+				}
+			}
+		}
+		return map;
+	});
+
+	// Build name → color map for inline text highlighting (used by ChatMessage)
+	const characterNameColorMap = $derived.by(() => {
+		const map = new Map<string, string>();
+		// From messages
+		for (const msg of messages) {
+			if (msg.characterId && msg.senderName && !map.has(msg.senderName)) {
+				const color = characterColorMap.get(msg.characterId);
+				if (color) {
+					map.set(msg.senderName, color);
+				}
+			}
+		}
+		// From scene characters who haven't spoken yet
+		if (sceneCharacters) {
+			for (const char of sceneCharacters) {
+				if (!map.has(char.name)) {
+					const color = characterColorMap.get(char.id);
+					if (color) {
+						map.set(char.name, color);
+					}
+				}
+			}
+		}
+		return map;
+	});
 
 	let container: HTMLDivElement | undefined = $state();
 
@@ -66,6 +151,8 @@
 						{textCleanupEnabled}
 						{autoWrapActions}
 						{userBubbleColor}
+						{characterColorMap}
+						characterColors={characterNameColorMap}
 						{generating}
 						onSwipe={(direction) => onSwipe(message.id, direction)}
 						onSaveEdit={(content) => onSaveEdit(message.id, index, content)}
@@ -82,6 +169,8 @@
 						{textCleanupEnabled}
 						{autoWrapActions}
 						{userBubbleColor}
+						{characterColorMap}
+						characterColors={characterNameColorMap}
 						{generating}
 						onSwipe={(direction) => onSwipe(message.id, direction)}
 						onSaveEdit={(content) => onSaveEdit(message.id, index, content)}

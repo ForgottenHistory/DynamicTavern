@@ -32,7 +32,8 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 			return json({ error: 'Invalid move - location not connected or session not found' }, { status: 400 });
 		}
 
-		const { session, character } = result;
+		const { session, characters: activeCharacters } = result;
+		const character = activeCharacters.length > 0 ? activeCharacters[0] : null;
 
 		const world = await worldService.get(session.worldFile);
 		if (!world) {
@@ -81,6 +82,7 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 			world,
 			location,
 			character,
+			characters: activeCharacters,
 			messages,
 			connections,
 			narration: narration.content

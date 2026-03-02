@@ -14,6 +14,7 @@ export interface SessionData {
 	world: World;
 	location: WorldLocation;
 	character: Character | null;
+	characters: Character[];
 	messages: Message[];
 	connections: ConnectionInfo[];
 }
@@ -21,6 +22,7 @@ export interface SessionData {
 export interface MoveResult {
 	location: WorldLocation;
 	character: Character | null;
+	characters: Character[];
 	messages: Message[];
 	connections: ConnectionInfo[];
 }
@@ -31,6 +33,14 @@ export async function loadSession(sessionId: number): Promise<SessionData | null
 		if (response.status === 404) return null;
 		throw new Error('Failed to load session');
 	}
+	return response.json();
+}
+
+export async function initSession(sessionId: number): Promise<{ messages: Message[]; characters: Character[] }> {
+	const response = await fetch(`/api/sandbox/sessions/${sessionId}/init`, {
+		method: 'POST'
+	});
+	if (!response.ok) throw new Error('Failed to init session');
 	return response.json();
 }
 
@@ -135,6 +145,33 @@ export async function executeSceneAction(
 		body: JSON.stringify(body)
 	});
 	if (!response.ok) throw new Error('Failed to execute scene action');
+	return response.json();
+}
+
+export async function fetchCharacters(sessionId: number): Promise<Character[]> {
+	const response = await fetch(`/api/sandbox/sessions/${sessionId}/characters`);
+	if (!response.ok) throw new Error('Failed to fetch characters');
+	const data = await response.json();
+	return data.characters;
+}
+
+export async function addCharacter(sessionId: number, characterId: number): Promise<{ characters: Character[]; messages: Message[] }> {
+	const response = await fetch(`/api/sandbox/sessions/${sessionId}/characters`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ characterId })
+	});
+	if (!response.ok) throw new Error('Failed to add character');
+	return response.json();
+}
+
+export async function removeCharacter(sessionId: number, characterId: number): Promise<{ characters: Character[]; messages: Message[] }> {
+	const response = await fetch(`/api/sandbox/sessions/${sessionId}/characters`, {
+		method: 'DELETE',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ characterId })
+	});
+	if (!response.ok) throw new Error('Failed to remove character');
 	return response.json();
 }
 

@@ -27,7 +27,12 @@ export const GET: RequestHandler = async ({ params, cookies }) => {
 		}
 
 		const location = worldService.getLocation(world, session.currentLocationId);
-		const character = await sandboxService.getCurrentCharacter(session);
+		const activeCharacters = await sandboxService.getActiveCharacters(sessionId);
+		// Legacy fallback: if no participants but session has currentCharacterId
+		let character: typeof activeCharacters[0] | null = activeCharacters[0] || null;
+		if (activeCharacters.length === 0 && session.currentCharacterId) {
+			character = await sandboxService.getCurrentCharacter(session);
+		}
 		const messages = await sandboxService.getMessages(sessionId);
 		const connections = worldService.getConnections(world, session.currentLocationId);
 
@@ -36,6 +41,7 @@ export const GET: RequestHandler = async ({ params, cookies }) => {
 			world,
 			location,
 			character,
+			characters: activeCharacters,
 			messages,
 			connections
 		});

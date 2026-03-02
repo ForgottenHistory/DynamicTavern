@@ -19,7 +19,7 @@ export function createSandboxState(options: SandboxStateOptions) {
 	// Core state
 	let world = $state<World | null>(null);
 	let location = $state<WorldLocation | null>(null);
-	let character = $state<Character | null>(null);
+	let characters = $state<Character[]>([]);
 	let messages = $state<Message[]>([]);
 	let connections = $state<api.ConnectionInfo[]>([]);
 	let loading = $state(true);
@@ -39,6 +39,11 @@ export function createSandboxState(options: SandboxStateOptions) {
 	let expandedWorldSections = $state<Set<string>>(new Set(['character']));
 	let expandedWorldItems = $state<Set<string>>(new Set());
 
+	// Character picker
+	let showCharacterPicker = $state(false);
+	let availableCharacters = $state<Character[]>([]);
+	let characterPickerLoading = $state(false);
+
 	// World state editing
 	let editingWorldKey = $state<string | null>(null);
 	let editingWorldValue = $state<string>('');
@@ -57,10 +62,11 @@ export function createSandboxState(options: SandboxStateOptions) {
 
 	// Derived
 	const hasAssistantMessages = $derived(messages.some((m) => m.role === 'assistant' || m.role === 'narrator'));
-	const sceneCharacters = $derived.by(() => {
-		if (!character) return [];
-		return [{ id: character.id, name: character.name, thumbnailData: character.thumbnailData, imageData: character.imageData }];
-	});
+	const primaryCharacter = $derived(characters.length > 0 ? characters[0] : null);
+	const hasCharacters = $derived(characters.length > 0);
+	const sceneCharacters = $derived(
+		characters.map((c) => ({ id: c.id, name: c.name, thumbnailData: c.thumbnailData, imageData: c.imageData }))
+	);
 
 	// Auto-scroll when typing indicator appears
 	$effect(() => {
@@ -90,7 +96,7 @@ export function createSandboxState(options: SandboxStateOptions) {
 
 			world = result.world;
 			location = result.location;
-			character = result.character;
+			characters = result.characters || (result.character ? [result.character] : []);
 			messages = result.messages;
 			connections = result.connections;
 
@@ -109,20 +115,10 @@ export function createSandboxState(options: SandboxStateOptions) {
 	async function generateInitialNarration() {
 		if (!world || !location) return;
 
-		let locationId = world.startLocation;
-		for (const [id, loc] of Object.entries(world.locations)) {
-			if (loc.name === location!.name) {
-				locationId = id;
-				break;
-			}
-		}
-
 		try {
-			const result = await api.moveToLocation(options.sessionId, locationId);
-			location = result.location;
-			character = result.character;
+			const result = await api.initSession(options.sessionId);
+			characters = result.characters;
 			messages = result.messages;
-			connections = result.connections;
 			options.onScrollToBottom();
 		} catch (e) {
 			console.error('Failed to generate initial narration:', e);
@@ -139,7 +135,7 @@ export function createSandboxState(options: SandboxStateOptions) {
 		try {
 			const result = await api.moveToLocation(options.sessionId, locationId);
 			location = result.location;
-			character = result.character;
+			characters = result.characters || (result.character ? [result.character] : []);
 			messages = result.messages;
 			connections = result.connections;
 			worldState = null;
@@ -189,7 +185,7 @@ export function createSandboxState(options: SandboxStateOptions) {
 	}
 
 	async function generate() {
-		if (generating || !character) return;
+		if (generating || characters.length === 0) return;
 		generating = true;
 		error = null;
 
@@ -314,7 +310,7 @@ export function createSandboxState(options: SandboxStateOptions) {
 	}
 
 	async function handleImpersonate(style: api.ImpersonateStyle) {
-		if (impersonating || !character) return;
+		if (impersonating || characters.length === 0) return;
 		impersonating = true;
 
 		try {
@@ -382,7 +378,7 @@ export function createSandboxState(options: SandboxStateOptions) {
 	// --- World state display helpers ---
 
 	function getEntityLabel(entityKey: string): string {
-		if (entityKey === 'character') return character?.name ?? 'Character';
+		if (entityKey === 'character') return primaryCharacter?.name ?? 'Character';
 		if (entityKey === 'user') return 'You';
 		return entityKey.charAt(0).toUpperCase() + entityKey.slice(1);
 	}
@@ -467,6 +463,56 @@ export function createSandboxState(options: SandboxStateOptions) {
 		if (updated) worldState = updated;
 	}
 
+	// --- Character picker ---
+
+	async function openCharacterPicker() {
+		characterPickerLoading = true;
+		showCharacterPicker = true;
+		try {
+			// The API already filters out in-scene characters
+			const chars = await api.fetchCharacters(options.sessionId);
+			availableCharacters = chars;
+		} catch (e) {
+			console.error('Failed to fetch characters:', e);
+			availableCharacters = [];
+		} finally {
+			characterPickerLoading = false;
+		}
+	}
+
+	function closeCharacterPicker() {
+		showCharacterPicker = false;
+		availableCharacters = [];
+	}
+
+	async function addCharacter(characterId: number) {
+		characterPickerLoading = true;
+		try {
+			const result = await api.addCharacter(options.sessionId, characterId);
+			characters = result.characters;
+			messages = result.messages;
+			closeCharacterPicker();
+			options.onScrollToBottom();
+		} catch (e) {
+			error = 'Failed to add character';
+			console.error(e);
+		} finally {
+			characterPickerLoading = false;
+		}
+	}
+
+	async function removeCharacter(characterId: number) {
+		try {
+			const result = await api.removeCharacter(options.sessionId, characterId);
+			characters = result.characters;
+			messages = result.messages;
+			options.onScrollToBottom();
+		} catch (e) {
+			error = 'Failed to remove character';
+			console.error(e);
+		}
+	}
+
 	// --- Settings ---
 
 	async function loadSettings() {
@@ -485,7 +531,9 @@ export function createSandboxState(options: SandboxStateOptions) {
 		// Core state
 		get world() { return world; },
 		get location() { return location; },
-		get character() { return character; },
+		get characters() { return characters; },
+		get primaryCharacter() { return primaryCharacter; },
+		get hasCharacters() { return hasCharacters; },
 		get messages() { return messages; },
 		get connections() { return connections; },
 		get loading() { return loading; },
@@ -521,6 +569,11 @@ export function createSandboxState(options: SandboxStateOptions) {
 		get editingItemDescription() { return editingItemDescription; },
 		set editingItemDescription(v: string) { editingItemDescription = v; },
 
+		// Character picker
+		get showCharacterPicker() { return showCharacterPicker; },
+		get availableCharacters() { return availableCharacters; },
+		get characterPickerLoading() { return characterPickerLoading; },
+
 		// Derived
 		get hasAssistantMessages() { return hasAssistantMessages; },
 		get sceneCharacters() { return sceneCharacters; },
@@ -540,6 +593,12 @@ export function createSandboxState(options: SandboxStateOptions) {
 		handleRegenerate,
 		handleImpersonate,
 		handleSceneAction,
+
+		// Character picker actions
+		openCharacterPicker,
+		closeCharacterPicker,
+		addCharacter,
+		removeCharacter,
 
 		// World state actions
 		generateWorldState: handleGenerateWorldState,

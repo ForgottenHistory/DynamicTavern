@@ -13,6 +13,8 @@
 		textCleanupEnabled?: boolean;
 		autoWrapActions?: boolean;
 		userBubbleColor?: string;
+		characterColorMap?: Map<number, string>;
+		characterColors?: Map<string, string>;
 		generating: boolean;
 		onSwipe: (direction: 'left' | 'right') => void;
 		onSaveEdit: (content: string) => void;
@@ -20,7 +22,7 @@
 		onBranch?: () => void;
 	}
 
-	let { message, index, isLast, charName, userName, textCleanupEnabled = true, autoWrapActions = false, userBubbleColor = '#14b8a6', generating, onSwipe, onSaveEdit, onDelete, onBranch }: Props = $props();
+	let { message, index, isLast, charName, userName, textCleanupEnabled = true, autoWrapActions = false, userBubbleColor = '#14b8a6', characterColorMap, characterColors, generating, onSwipe, onSaveEdit, onDelete, onBranch }: Props = $props();
 
 	// Reasoning modal state
 	let showReasoningModal = $state(false);
@@ -42,8 +44,14 @@
 	let isUser = $derived(message.role === 'user');
 	let isSystem = $derived(message.role === 'system');
 	let isNarrator = $derived(message.role === 'narrator');
+	let isAssistant = $derived(message.role === 'assistant');
 	let showSwipeControls = $derived(message.role === 'assistant' && isLast);
 	let showGeneratingPlaceholder = $derived(generating && isLast && (message.role === 'assistant' || message.role === 'narrator'));
+
+	// Per-character color from the map, fallback to --accent-secondary
+	let charColor = $derived(
+		isAssistant && message.characterId && characterColorMap?.get(message.characterId) || ''
+	);
 
 	// Display info - prefer stored sender info, fall back to current names
 	let displayName = $derived(
@@ -126,8 +134,8 @@
 				</svg>
 			{/if}
 			<span
-				class="text-sm font-semibold {isNarrator ? 'text-[var(--text-secondary)]' : isSystem ? 'text-[var(--warning)]' : !isUser ? 'text-[var(--accent-secondary)]' : ''}"
-				style={isUser ? `color: ${userBubbleColor}` : ''}
+				class="text-sm font-semibold {isNarrator ? 'text-[var(--text-secondary)]' : isSystem ? 'text-[var(--warning)]' : !isUser && !charColor ? 'text-[var(--accent-secondary)]' : ''}"
+				style={isUser ? `color: ${userBubbleColor}` : charColor ? `color: ${charColor}` : ''}
 			>
 				{displayName}
 			</span>
@@ -143,8 +151,8 @@
 				? 'bg-[var(--warning)]/10 border-2 border-[var(--warning)]/30 text-[var(--text-primary)] italic'
 				: isUser
 				? 'bg-[var(--assistant-bubble)] border-2 text-[var(--text-primary)]'
-				: 'bg-[var(--assistant-bubble)] border-2 border-[var(--accent-secondary)]/60 text-[var(--text-primary)]'} {isEditing ? 'ring-2 ring-[var(--accent-primary)]' : ''}"
-			style={isUser ? `border-color: ${userBubbleColor}` : ''}
+				: 'bg-[var(--assistant-bubble)] border-2 text-[var(--text-primary)]'} {isEditing ? 'ring-2 ring-[var(--accent-primary)]' : ''} {!isNarrator && !isSystem && !isUser && !charColor ? 'border-[var(--accent-secondary)]/60' : ''}"
+			style={isUser ? `border-color: ${userBubbleColor}` : charColor ? `border-color: ${charColor}99` : ''}
 		>
 			{#if showGeneratingPlaceholder}
 				<div class="flex justify-center py-2">
@@ -186,6 +194,7 @@
 					{userName}
 					{textCleanupEnabled}
 					{autoWrapActions}
+					{characterColors}
 				/>
 			{/if}
 		</div>

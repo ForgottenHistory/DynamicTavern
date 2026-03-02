@@ -65,7 +65,11 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 		}
 
 		const location = worldService.getLocation(world, session.currentLocationId);
-		const character = await sandboxService.getCurrentCharacter(session);
+		// Pick a random active character to respond
+		const activeCharacters = await sandboxService.getActiveCharacters(sessionId);
+		const character = activeCharacters.length > 0
+			? activeCharacters[Math.floor(Math.random() * activeCharacters.length)]
+			: null;
 		const userInfo = await personaService.getActiveUserInfo(parseInt(userId));
 
 		// Add user message

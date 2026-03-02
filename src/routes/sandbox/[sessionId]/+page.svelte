@@ -98,15 +98,16 @@
 						loading={false}
 						isTyping={state.sending}
 						generating={state.generating}
-						charName={state.character?.name}
+						charName={state.primaryCharacter?.name}
 						userName={state.userName || data.user.displayName}
-						charAvatar={state.character?.thumbnailData || state.character?.imageData}
+						charAvatar={state.primaryCharacter?.thumbnailData || state.primaryCharacter?.imageData}
 						userAvatar={state.userAvatar}
 						chatLayout={state.chatLayout}
 						avatarStyle={state.avatarStyle}
 						textCleanupEnabled={state.textCleanupEnabled}
 						autoWrapActions={state.autoWrapActions}
 						userBubbleColor={state.userBubbleColor}
+						sceneCharacters={state.sceneCharacters}
 						onSwipe={state.handleSwipe}
 						onSaveEdit={state.handleSaveEdit}
 						onDelete={state.handleDelete}
@@ -119,9 +120,9 @@
 						impersonating={state.impersonating}
 						sceneCharacters={state.sceneCharacters}
 						onSend={state.sendMessage}
-						onGenerate={state.character ? state.generate : undefined}
+						onGenerate={state.hasCharacters ? state.generate : undefined}
 						onRegenerate={state.handleRegenerate}
-						onImpersonate={state.character ? state.handleImpersonate : undefined}
+						onImpersonate={state.hasCharacters ? state.handleImpersonate : undefined}
 						onSceneAction={state.handleSceneAction}
 					/>
 				</div>
@@ -134,30 +135,104 @@
 						<p class="text-sm text-[var(--text-muted)]">{state.location?.description}</p>
 					</div>
 
-					<!-- Character Present -->
-					{#if state.character}
-						<div class="p-4 border-b border-[var(--border-primary)]">
-							<h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Present</h3>
-							<div class="flex items-center gap-3">
-								{#if state.character.thumbnailData || state.character.imageData}
-									<img
-										src={state.character.thumbnailData || state.character.imageData}
-										alt={state.character.name}
-										class="w-12 h-12 rounded-lg object-cover"
-									/>
-								{:else}
-									<div class="w-12 h-12 rounded-lg bg-[var(--accent-primary)]/20 flex items-center justify-center">
-										<span class="text-lg font-bold text-[var(--accent-primary)]">
-											{state.character.name.charAt(0)}
-										</span>
+					<!-- Characters Present -->
+					<div class="p-4 border-b border-[var(--border-primary)]">
+						<div class="flex items-center justify-between mb-3">
+							<h3 class="text-sm font-medium text-[var(--text-secondary)]">Present</h3>
+							<div class="relative">
+								<button
+									onclick={state.openCharacterPicker}
+									disabled={state.characterPickerLoading}
+									class="p-1 hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] rounded transition disabled:opacity-50"
+									title="Add character"
+								>
+									<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+									</svg>
+								</button>
+
+								{#if state.showCharacterPicker}
+									<!-- Backdrop to close picker -->
+									<!-- svelte-ignore a11y_no_static_element_interactions -->
+									<div
+										class="fixed inset-0 z-40"
+										onclick={state.closeCharacterPicker}
+										onkeydown={(e) => { if (e.key === 'Escape') state.closeCharacterPicker(); }}
+									></div>
+
+									<!-- Character picker dropdown -->
+									<div class="absolute right-0 top-full mt-1 w-64 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-50 overflow-hidden">
+										{#if state.characterPickerLoading && state.availableCharacters.length === 0}
+											<div class="flex items-center justify-center py-4">
+												<div class="animate-spin rounded-full h-5 w-5 border-2 border-[var(--accent-primary)] border-t-transparent"></div>
+											</div>
+										{:else if state.availableCharacters.length === 0}
+											<div class="p-3 text-center text-sm text-[var(--text-muted)]">No characters available</div>
+										{:else}
+											<div class="max-h-64 overflow-y-auto">
+												{#each state.availableCharacters as char}
+													<button
+														onclick={() => state.addCharacter(char.id)}
+														disabled={state.characterPickerLoading}
+														class="w-full flex items-center gap-3 p-3 hover:bg-[var(--bg-secondary)] transition text-left disabled:opacity-50"
+													>
+														{#if char.thumbnailData || char.imageData}
+															<img
+																src={char.thumbnailData || char.imageData}
+																alt={char.name}
+																class="w-8 h-8 rounded-lg object-cover flex-shrink-0"
+															/>
+														{:else}
+															<div class="w-8 h-8 rounded-lg bg-[var(--accent-primary)]/20 flex items-center justify-center flex-shrink-0">
+																<span class="text-sm font-bold text-[var(--accent-primary)]">
+																	{char.name.charAt(0)}
+																</span>
+															</div>
+														{/if}
+														<span class="text-sm text-[var(--text-primary)] truncate">{char.name}</span>
+													</button>
+												{/each}
+											</div>
+										{/if}
 									</div>
 								{/if}
-								<div>
-									<p class="font-medium text-[var(--text-primary)]">{state.character.name}</p>
-									{#if state.character.description}
-										<p class="text-xs text-[var(--text-muted)] line-clamp-2">{state.character.description}</p>
-									{/if}
-								</div>
+							</div>
+						</div>
+
+						{#if state.hasCharacters}
+							<div class="space-y-2">
+								{#each state.characters as char}
+									<div class="group flex items-center gap-3">
+										{#if char.thumbnailData || char.imageData}
+											<img
+												src={char.thumbnailData || char.imageData}
+												alt={char.name}
+												class="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+											/>
+										{:else}
+											<div class="w-10 h-10 rounded-lg bg-[var(--accent-primary)]/20 flex items-center justify-center flex-shrink-0">
+												<span class="text-sm font-bold text-[var(--accent-primary)]">
+													{char.name.charAt(0)}
+												</span>
+											</div>
+										{/if}
+										<div class="flex-1 min-w-0">
+											<p class="font-medium text-sm text-[var(--text-primary)] truncate">{char.name}</p>
+											{#if char.description}
+												<p class="text-xs text-[var(--text-muted)] line-clamp-1">{char.description}</p>
+											{/if}
+										</div>
+										<button
+											onclick={() => state.removeCharacter(char.id)}
+											class="p-1 opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-red-400 hover:bg-[var(--bg-tertiary)] rounded transition"
+											title="Remove {char.name}"
+										>
+											<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+											</svg>
+										</button>
+									</div>
+								{/each}
 							</div>
 							<button
 								onclick={state.generate}
@@ -166,13 +241,10 @@
 							>
 								{state.generating ? 'Generating...' : 'Prompt action'}
 							</button>
-						</div>
-					{:else}
-						<div class="p-4 border-b border-[var(--border-primary)]">
-							<h3 class="text-sm font-medium text-[var(--text-secondary)] mb-2">Present</h3>
+						{:else}
 							<p class="text-sm text-[var(--text-muted)] italic">No one here</p>
-						</div>
-					{/if}
+						{/if}
+					</div>
 
 					<!-- World State -->
 					{#if state.worldSidebarEnabled}

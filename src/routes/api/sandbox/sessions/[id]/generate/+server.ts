@@ -25,7 +25,11 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 			return json({ error: 'Session not found' }, { status: 404 });
 		}
 
-		const character = await sandboxService.getCurrentCharacter(session);
+		// Pick a random active character to generate response
+		const activeCharacters = await sandboxService.getActiveCharacters(sessionId);
+		const character = activeCharacters.length > 0
+			? activeCharacters[Math.floor(Math.random() * activeCharacters.length)]
+			: null;
 		if (!character) {
 			return json({ error: 'No character present to generate response' }, { status: 400 });
 		}

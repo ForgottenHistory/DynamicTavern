@@ -368,5 +368,22 @@ export type Message = typeof messages.$inferSelect;
 export type NewMessage = typeof messages.$inferInsert;
 export type SceneParticipant = typeof sceneParticipants.$inferSelect;
 export type NewSceneParticipant = typeof sceneParticipants.$inferInsert;
+export const sandboxParticipants = sqliteTable('sandbox_participants', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	sandboxSessionId: integer('sandbox_session_id')
+		.notNull()
+		.references(() => sandboxSessions.id, { onDelete: 'cascade' }),
+	characterId: integer('character_id')
+		.notNull()
+		.references(() => characters.id, { onDelete: 'cascade' }),
+	isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+	joinedAt: integer('joined_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+	leftAt: integer('left_at', { mode: 'timestamp' })
+});
+
 export type SandboxSession = typeof sandboxSessions.$inferSelect;
 export type NewSandboxSession = typeof sandboxSessions.$inferInsert;
+export type SandboxParticipant = typeof sandboxParticipants.$inferSelect;
+export type NewSandboxParticipant = typeof sandboxParticipants.$inferInsert;

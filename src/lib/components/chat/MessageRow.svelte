@@ -16,6 +16,8 @@
 		textCleanupEnabled?: boolean;
 		autoWrapActions?: boolean;
 		userBubbleColor?: string;
+		characterColorMap?: Map<number, string>;
+		characterColors?: Map<string, string>;
 		generating: boolean;
 		onSwipe: (direction: 'left' | 'right') => void;
 		onSaveEdit: (content: string) => void;
@@ -23,7 +25,7 @@
 		onBranch?: () => void;
 	}
 
-	let { message, index, isLast, charName, userName, charAvatar, userAvatar, avatarStyle = 'circle', textCleanupEnabled = true, autoWrapActions = false, userBubbleColor = '#14b8a6', generating, onSwipe, onSaveEdit, onDelete, onBranch }: Props = $props();
+	let { message, index, isLast, charName, userName, charAvatar, userAvatar, avatarStyle = 'circle', textCleanupEnabled = true, autoWrapActions = false, userBubbleColor = '#14b8a6', characterColorMap, characterColors, generating, onSwipe, onSaveEdit, onDelete, onBranch }: Props = $props();
 
 	// Reasoning modal state
 	let showReasoningModal = $state(false);
@@ -45,8 +47,14 @@
 	let isUser = $derived(message.role === 'user');
 	let isSystem = $derived(message.role === 'system');
 	let isNarrator = $derived(message.role === 'narrator');
+	let isAssistant = $derived(message.role === 'assistant');
 	let showSwipeControls = $derived(message.role === 'assistant' && isLast);
 	let showGeneratingPlaceholder = $derived(generating && isLast && (message.role === 'assistant' || message.role === 'narrator'));
+
+	// Per-character color from the map, fallback to --accent-secondary
+	let charColor = $derived(
+		isAssistant && message.characterId && characterColorMap?.get(message.characterId) || ''
+	);
 
 	// Display info - prefer stored sender info, fall back to current names
 	let displayName = $derived(
@@ -155,8 +163,8 @@
 		<!-- Header: Name and timestamp -->
 		<div class="flex items-baseline gap-2 mb-1">
 			<span
-				class="font-semibold {isNarrator ? 'text-[var(--text-secondary)]' : isSystem ? 'text-[var(--warning)]' : !isUser ? 'text-[var(--accent-secondary)]' : ''}"
-				style={isUser ? `color: ${userBubbleColor}` : ''}
+				class="font-semibold {isNarrator ? 'text-[var(--text-secondary)]' : isSystem ? 'text-[var(--warning)]' : !isUser && !charColor ? 'text-[var(--accent-secondary)]' : ''}"
+				style={isUser ? `color: ${userBubbleColor}` : charColor ? `color: ${charColor}` : ''}
 			>
 				{displayName}
 			</span>
@@ -225,6 +233,7 @@
 					{userName}
 					{textCleanupEnabled}
 					{autoWrapActions}
+					{characterColors}
 				/>
 			</div>
 		{/if}
