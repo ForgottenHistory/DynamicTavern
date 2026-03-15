@@ -124,6 +124,9 @@
 						onRegenerate={state.handleRegenerate}
 						onImpersonate={state.hasCharacters ? state.handleImpersonate : undefined}
 						onSceneAction={state.handleSceneAction}
+						onSandboxAction={(type) => {
+							if (type === 'wait') state.handleWait();
+						}}
 					/>
 				</div>
 

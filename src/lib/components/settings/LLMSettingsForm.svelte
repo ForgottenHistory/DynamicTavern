@@ -91,7 +91,7 @@
 			type="number"
 			bind:value={settings.maxTokens}
 			min="50"
-			max="4000"
+			max="12000"
 			step="50"
 			class="w-full px-4 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-primary)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
 		/>

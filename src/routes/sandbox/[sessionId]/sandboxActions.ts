@@ -177,6 +177,17 @@ export async function removeCharacter(sessionId: number, characterId: number): P
 	return response.json();
 }
 
+export async function wait(sessionId: number): Promise<{ characters: Character[]; messages: Message[] }> {
+	const response = await fetch(`/api/sandbox/sessions/${sessionId}/wait`, {
+		method: 'POST'
+	});
+	if (!response.ok) {
+		const data = await response.json();
+		throw new Error(data.error || 'Failed to wait');
+	}
+	return response.json();
+}
+
 export async function getWorldState(sessionId: number): Promise<WorldStateData | null> {
 	try {
 		const res = await fetch(`/api/sandbox/sessions/${sessionId}/world-state`);

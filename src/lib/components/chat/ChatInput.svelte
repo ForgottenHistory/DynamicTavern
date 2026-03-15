@@ -10,6 +10,8 @@
 		imageData: string | null;
 	}
 
+	export type SandboxActionType = 'wait';
+
 	interface Props {
 		disabled: boolean;
 		hasAssistantMessages?: boolean;
@@ -22,19 +24,21 @@
 		onImpersonate?: (style: ImpersonateStyle) => void;
 		onGenerateImage?: (type: 'character' | 'user' | 'scene' | 'raw') => void;
 		onSceneAction?: (type: SceneActionType, context?: { characterId?: number; characterName?: string }) => void;
+		onSandboxAction?: (type: SandboxActionType) => void;
 	}
 
-	let { disabled, hasAssistantMessages = false, impersonating = false, generatingImage = false, sceneCharacters = [], onSend, onGenerate, onRegenerate, onImpersonate, onGenerateImage, onSceneAction }: Props = $props();
+	let { disabled, hasAssistantMessages = false, impersonating = false, generatingImage = false, sceneCharacters = [], onSend, onGenerate, onRegenerate, onImpersonate, onGenerateImage, onSceneAction, onSandboxAction }: Props = $props();
 
 	let input = $state('');
 	let showImageDropdown = $state(false);
 	let showActionsDropdown = $state(false);
 	let showImpersonateDropdown = $state(false);
+	let showSandboxDropdown = $state(false);
 	let textareaRef = $state<HTMLTextAreaElement | undefined>(undefined);
 	let highlightRef = $state<HTMLDivElement | undefined>(undefined);
 
 	// Whether to show the action buttons row
-	let showActions = $derived(!!onSceneAction || !!onImpersonate || !!onGenerateImage || !!onRegenerate);
+	let showActions = $derived(!!onSceneAction || !!onImpersonate || !!onGenerateImage || !!onRegenerate || !!onSandboxAction);
 
 	export function setInput(text: string) {
 		input = text;
@@ -122,6 +126,11 @@
 		onImpersonate?.(style);
 	}
 
+	function handleSandboxAction(type: SandboxActionType) {
+		showSandboxDropdown = false;
+		onSandboxAction?.(type);
+	}
+
 	function handleClickOutside(e: MouseEvent) {
 		const target = e.target as HTMLElement;
 		if (!target.closest('.image-dropdown-container')) {
@@ -132,6 +141,9 @@
 		}
 		if (!target.closest('.impersonate-dropdown-container')) {
 			showImpersonateDropdown = false;
+		}
+		if (!target.closest('.sandbox-dropdown-container')) {
+			showSandboxDropdown = false;
 		}
 	}
 </script>
@@ -199,6 +211,34 @@
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
 									</svg>
 									Narrate Scene
+								</button>
+							</div>
+						{/if}
+					</div>
+				{/if}
+				<!-- Sandbox Actions Dropdown -->
+				{#if onSandboxAction}
+					<div class="relative sandbox-dropdown-container">
+						<button
+							onclick={() => (showSandboxDropdown = !showSandboxDropdown)}
+							{disabled}
+							class="p-3 text-[var(--text-muted)] hover:text-[var(--accent-secondary)] disabled:opacity-30 disabled:cursor-not-allowed transition rounded-lg hover:bg-[var(--bg-tertiary)]"
+							title="Sandbox Actions"
+						>
+							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+							</svg>
+						</button>
+						{#if showSandboxDropdown}
+							<div class="absolute bottom-full left-0 mb-2 w-48 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-xl shadow-xl overflow-hidden z-50">
+								<button
+									onclick={() => handleSandboxAction('wait')}
+									class="w-full px-4 py-2.5 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition flex items-center gap-3"
+								>
+									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+									</svg>
+									Wait
 								</button>
 							</div>
 						{/if}

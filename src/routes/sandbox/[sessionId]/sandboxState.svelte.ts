@@ -1,8 +1,10 @@
 import type { Character, Message } from '$lib/server/db/schema';
 import type { World, WorldLocation } from '$lib/types/sandbox';
-import type { WorldStateData } from '$lib/server/services/worldInfoService';
 import { goto } from '$app/navigation';
 import * as api from './sandboxActions';
+import { createWorldState } from './sandboxWorldState.svelte';
+import { createMessageActions } from './sandboxMessageActions.svelte';
+import { createCharacters } from './sandboxCharacters.svelte';
 
 export type { ImpersonateStyle, SceneActionType } from './sandboxActions';
 export type { ConnectionInfo } from './sandboxActions';
@@ -29,28 +31,6 @@ export function createSandboxState(options: SandboxStateOptions) {
 	let impersonating = $state(false);
 	let error = $state<string | null>(null);
 
-	// World state
-	let worldState = $state<WorldStateData | null>(null);
-	let worldStateLoading = $state(false);
-	let worldSidebarEnabled = $state(false);
-
-	// World state display
-	let worldExpanded = $state(true);
-	let expandedWorldSections = $state<Set<string>>(new Set(['character']));
-	let expandedWorldItems = $state<Set<string>>(new Set());
-
-	// Character picker
-	let showCharacterPicker = $state(false);
-	let availableCharacters = $state<Character[]>([]);
-	let characterPickerLoading = $state(false);
-
-	// World state editing
-	let editingWorldKey = $state<string | null>(null);
-	let editingWorldValue = $state<string>('');
-	let editingListItem = $state<{ entityKey: string; attrName: string; itemIdx: number } | null>(null);
-	let editingItemName = $state('');
-	let editingItemDescription = $state('');
-
 	// User settings
 	let chatLayout = $state<'bubbles' | 'discord'>('bubbles');
 	let avatarStyle = $state<'circle' | 'rounded'>('circle');
@@ -68,6 +48,33 @@ export function createSandboxState(options: SandboxStateOptions) {
 		characters.map((c) => ({ id: c.id, name: c.name, thumbnailData: c.thumbnailData, imageData: c.imageData }))
 	);
 
+	// --- Sub-modules ---
+
+	const worldStateModule = createWorldState({
+		sessionId: options.sessionId,
+		getPrimaryCharacter: () => primaryCharacter
+	});
+
+	const messageActions = createMessageActions({
+		sessionId: options.sessionId,
+		getMessages: () => messages,
+		setMessages: (msgs) => { messages = msgs; },
+		getGenerating: () => generating,
+		setGenerating: (v) => { generating = v; }
+	});
+
+	const charactersModule = createCharacters({
+		sessionId: options.sessionId,
+		getCharacters: () => characters,
+		setCharacters: (chars) => { characters = chars; },
+		setMessages: (msgs) => { messages = msgs; },
+		getSending: () => sending,
+		setSending: (v) => { sending = v; },
+		getGenerating: () => generating,
+		setError: (err) => { error = err; },
+		onScrollToBottom: options.onScrollToBottom
+	});
+
 	// Auto-scroll when typing indicator appears
 	$effect(() => {
 		if (sending || generating) {
@@ -78,7 +85,7 @@ export function createSandboxState(options: SandboxStateOptions) {
 	// --- Init ---
 
 	async function init() {
-		await Promise.all([loadSession(), loadSettings(), loadWorldState()]);
+		await Promise.all([loadSession(), loadSettings(), worldStateModule.load()]);
 	}
 
 	// --- Session loading ---
@@ -138,7 +145,7 @@ export function createSandboxState(options: SandboxStateOptions) {
 			characters = result.characters || (result.character ? [result.character] : []);
 			messages = result.messages;
 			connections = result.connections;
-			worldState = null;
+			worldStateModule.reset();
 			options.onScrollToBottom();
 		} catch (e) {
 			error = 'Failed to move to location';
@@ -212,102 +219,7 @@ export function createSandboxState(options: SandboxStateOptions) {
 		goto('/sandbox');
 	}
 
-	// --- Message actions ---
-
-	function applyRegeneration(msg: Message, newContent: string, newReasoning?: string): Message {
-		const updatedSwipes = msg.swipes ? JSON.parse(msg.swipes) : [msg.content];
-		updatedSwipes.push(newContent);
-		return {
-			...msg,
-			content: newContent,
-			swipes: JSON.stringify(updatedSwipes),
-			currentSwipe: updatedSwipes.length - 1,
-			reasoning: newReasoning
-				? JSON.stringify([
-						...(msg.reasoning ? (() => { try { const a = JSON.parse(msg.reasoning!); return Array.isArray(a) ? a : new Array(updatedSwipes.length - 1).fill(null); } catch { return new Array(updatedSwipes.length - 1).fill(null); } })() : new Array(updatedSwipes.length - 1).fill(null)),
-						newReasoning
-					])
-				: msg.reasoning
-		};
-	}
-
-	async function handleSwipe(messageId: number, direction: 'left' | 'right') {
-		const message = messages.find((m) => m.id === messageId);
-		if (!message) return;
-
-		const swipes: string[] = message.swipes ? JSON.parse(message.swipes) : [message.content];
-		const currentIndex = message.currentSwipe ?? 0;
-
-		if (direction === 'right' && currentIndex >= swipes.length - 1) {
-			generating = true;
-			try {
-				const result = await api.regenerateMessage(options.sessionId, messageId);
-				messages = messages.map((m) =>
-					m.id === messageId ? applyRegeneration(m, result.content, result.reasoning) : m
-				);
-			} catch (e) {
-				console.error('Failed to regenerate:', e);
-			} finally {
-				generating = false;
-			}
-			return;
-		}
-
-		const newIndex =
-			direction === 'left'
-				? Math.max(0, currentIndex - 1)
-				: Math.min(swipes.length - 1, currentIndex + 1);
-
-		if (newIndex === currentIndex) return;
-
-		try {
-			const ok = await api.swipeMessage(options.sessionId, messageId, newIndex);
-			if (ok) {
-				messages = messages.map((m) =>
-					m.id === messageId ? { ...m, content: swipes[newIndex], currentSwipe: newIndex } : m
-				);
-			}
-		} catch (e) {
-			console.error('Failed to swipe:', e);
-		}
-	}
-
-	async function handleSaveEdit(messageId: number, _index: number, content: string) {
-		try {
-			const result = await api.editMessage(options.sessionId, messageId, content);
-			messages = messages.map((m) => (m.id === messageId ? result.message : m));
-		} catch (e) {
-			console.error('Failed to edit message:', e);
-		}
-	}
-
-	async function handleDelete(messageId: number, _index: number) {
-		try {
-			const ok = await api.deleteMessage(options.sessionId, messageId);
-			if (ok) {
-				messages = messages.filter((m) => m.id < messageId);
-			}
-		} catch (e) {
-			console.error('Failed to delete message:', e);
-		}
-	}
-
-	async function handleRegenerate() {
-		const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant' || m.role === 'narrator');
-		if (!lastAssistant) return;
-
-		generating = true;
-		try {
-			const result = await api.regenerateMessage(options.sessionId, lastAssistant.id);
-			messages = messages.map((m) =>
-				m.id === lastAssistant.id ? applyRegeneration(m, result.content, result.reasoning) : m
-			);
-		} catch (e) {
-			console.error('Failed to regenerate:', e);
-		} finally {
-			generating = false;
-		}
-	}
+	// --- Impersonate & Scene Actions ---
 
 	async function handleImpersonate(style: api.ImpersonateStyle) {
 		if (impersonating || characters.length === 0) return;
@@ -345,175 +257,6 @@ export function createSandboxState(options: SandboxStateOptions) {
 		}
 	}
 
-	// --- World state ---
-
-	async function loadWorldState() {
-		try {
-			worldState = await api.getWorldState(options.sessionId);
-		} catch (e) {
-			console.error('Failed to load world state:', e);
-		}
-	}
-
-	async function handleGenerateWorldState() {
-		worldStateLoading = true;
-		try {
-			worldState = await api.generateWorldState(options.sessionId);
-		} catch (e) {
-			console.error('Failed to generate world state:', e);
-		} finally {
-			worldStateLoading = false;
-		}
-	}
-
-	async function handleClearWorldState() {
-		try {
-			await api.clearWorldState(options.sessionId);
-			worldState = null;
-		} catch (e) {
-			console.error('Failed to clear world state:', e);
-		}
-	}
-
-	// --- World state display helpers ---
-
-	function getEntityLabel(entityKey: string): string {
-		if (entityKey === 'user') return 'You';
-		// Entity keys are now character names directly (or legacy 'character' key)
-		if (entityKey === 'character') return primaryCharacter?.name ?? 'Character';
-		return entityKey;
-	}
-
-	function getAttributeIcon(attrName: string): { path: string; color: string } | null {
-		const icons: Record<string, { path: string; color: string }> = {
-			mood: { path: 'M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z', color: 'var(--warning)' },
-			position: { path: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z', color: 'var(--accent-primary)' },
-			clothes: { path: 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01', color: 'var(--text-muted)' },
-			clothing: { path: 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01', color: 'var(--text-muted)' },
-			body: { path: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z', color: 'var(--accent-secondary)' },
-			thinking: { path: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z', color: 'var(--text-secondary)' }
-		};
-		return icons[attrName.toLowerCase()] || null;
-	}
-
-	function toggleWorldSection(section: string) {
-		const newSet = new Set(expandedWorldSections);
-		if (newSet.has(section)) newSet.delete(section); else newSet.add(section);
-		expandedWorldSections = newSet;
-	}
-
-	function toggleWorldItem(key: string) {
-		const newSet = new Set(expandedWorldItems);
-		if (newSet.has(key)) newSet.delete(key); else newSet.add(key);
-		expandedWorldItems = newSet;
-	}
-
-	// --- World state editing ---
-
-	function startEditText(entityKey: string, attrName: string, currentValue: string) {
-		editingWorldKey = `${entityKey}-${attrName}`;
-		editingWorldValue = currentValue;
-		editingListItem = null;
-	}
-
-	function startEditListItem(entityKey: string, attrName: string, itemIdx: number, item: { name: string; description: string }) {
-		editingListItem = { entityKey, attrName, itemIdx };
-		editingItemName = item.name;
-		editingItemDescription = item.description;
-		editingWorldKey = null;
-	}
-
-	function cancelEdit() {
-		editingWorldKey = null;
-		editingListItem = null;
-	}
-
-	async function saveTextEdit(entityKey: string, attrName: string) {
-		const updated = await api.updateWorldState(options.sessionId, entityKey, attrName, editingWorldValue);
-		if (updated) worldState = updated;
-		editingWorldKey = null;
-	}
-
-	async function saveListItemEdit() {
-		if (!editingListItem || !worldState) return;
-		const { entityKey, attrName, itemIdx } = editingListItem;
-		const entity = worldState[entityKey];
-		if (!entity) return;
-
-		const attr = entity.attributes.find(a => a.name === attrName);
-		if (!attr || attr.type !== 'list' || !Array.isArray(attr.value)) return;
-
-		const newList = [...attr.value];
-		newList[itemIdx] = { name: editingItemName, description: editingItemDescription };
-
-		const updated = await api.updateWorldState(options.sessionId, entityKey, attrName, newList);
-		if (updated) worldState = updated;
-		editingListItem = null;
-	}
-
-	async function deleteListItem(entityKey: string, attrName: string, itemIdx: number) {
-		if (!worldState) return;
-		const entity = worldState[entityKey];
-		if (!entity) return;
-
-		const attr = entity.attributes.find(a => a.name === attrName);
-		if (!attr || attr.type !== 'list' || !Array.isArray(attr.value)) return;
-
-		const newList = attr.value.filter((_, i) => i !== itemIdx);
-		const updated = await api.updateWorldState(options.sessionId, entityKey, attrName, newList);
-		if (updated) worldState = updated;
-	}
-
-	// --- Character picker ---
-
-	async function openCharacterPicker() {
-		characterPickerLoading = true;
-		showCharacterPicker = true;
-		try {
-			// The API already filters out in-scene characters
-			const chars = await api.fetchCharacters(options.sessionId);
-			availableCharacters = chars;
-		} catch (e) {
-			console.error('Failed to fetch characters:', e);
-			availableCharacters = [];
-		} finally {
-			characterPickerLoading = false;
-		}
-	}
-
-	function closeCharacterPicker() {
-		showCharacterPicker = false;
-		availableCharacters = [];
-	}
-
-	async function addCharacter(characterId: number) {
-		characterPickerLoading = true;
-		try {
-			const result = await api.addCharacter(options.sessionId, characterId);
-			characters = result.characters;
-			messages = result.messages;
-			closeCharacterPicker();
-			options.onScrollToBottom();
-		} catch (e) {
-			error = 'Failed to add character';
-			console.error(e);
-		} finally {
-			characterPickerLoading = false;
-		}
-	}
-
-	async function removeCharacter(characterId: number) {
-		try {
-			const result = await api.removeCharacter(options.sessionId, characterId);
-			characters = result.characters;
-			messages = result.messages;
-			options.onScrollToBottom();
-		} catch (e) {
-			error = 'Failed to remove character';
-			console.error(e);
-		}
-	}
-
 	// --- Settings ---
 
 	async function loadSettings() {
@@ -523,7 +266,7 @@ export function createSandboxState(options: SandboxStateOptions) {
 		textCleanupEnabled = settings.textCleanupEnabled;
 		autoWrapActions = settings.autoWrapActions;
 		userBubbleColor = settings.userBubbleColor;
-		worldSidebarEnabled = settings.worldSidebarEnabled;
+		worldStateModule.setSidebarEnabled(settings.worldSidebarEnabled);
 		userAvatar = settings.userAvatar;
 		userName = settings.userName;
 	}
@@ -553,27 +296,27 @@ export function createSandboxState(options: SandboxStateOptions) {
 		get userAvatar() { return userAvatar; },
 		get userName() { return userName; },
 
-		// World state
-		get worldState() { return worldState; },
-		get worldStateLoading() { return worldStateLoading; },
-		get worldSidebarEnabled() { return worldSidebarEnabled; },
-		get worldExpanded() { return worldExpanded; },
-		set worldExpanded(v: boolean) { worldExpanded = v; },
-		get expandedWorldSections() { return expandedWorldSections; },
-		get expandedWorldItems() { return expandedWorldItems; },
-		get editingWorldKey() { return editingWorldKey; },
-		get editingWorldValue() { return editingWorldValue; },
-		set editingWorldValue(v: string) { editingWorldValue = v; },
-		get editingListItem() { return editingListItem; },
-		get editingItemName() { return editingItemName; },
-		set editingItemName(v: string) { editingItemName = v; },
-		get editingItemDescription() { return editingItemDescription; },
-		set editingItemDescription(v: string) { editingItemDescription = v; },
+		// World state (delegated)
+		get worldState() { return worldStateModule.worldState; },
+		get worldStateLoading() { return worldStateModule.worldStateLoading; },
+		get worldSidebarEnabled() { return worldStateModule.worldSidebarEnabled; },
+		get worldExpanded() { return worldStateModule.worldExpanded; },
+		set worldExpanded(v: boolean) { worldStateModule.worldExpanded = v; },
+		get expandedWorldSections() { return worldStateModule.expandedWorldSections; },
+		get expandedWorldItems() { return worldStateModule.expandedWorldItems; },
+		get editingWorldKey() { return worldStateModule.editingWorldKey; },
+		get editingWorldValue() { return worldStateModule.editingWorldValue; },
+		set editingWorldValue(v: string) { worldStateModule.editingWorldValue = v; },
+		get editingListItem() { return worldStateModule.editingListItem; },
+		get editingItemName() { return worldStateModule.editingItemName; },
+		set editingItemName(v: string) { worldStateModule.editingItemName = v; },
+		get editingItemDescription() { return worldStateModule.editingItemDescription; },
+		set editingItemDescription(v: string) { worldStateModule.editingItemDescription = v; },
 
-		// Character picker
-		get showCharacterPicker() { return showCharacterPicker; },
-		get availableCharacters() { return availableCharacters; },
-		get characterPickerLoading() { return characterPickerLoading; },
+		// Character picker (delegated)
+		get showCharacterPicker() { return charactersModule.showCharacterPicker; },
+		get availableCharacters() { return charactersModule.availableCharacters; },
+		get characterPickerLoading() { return charactersModule.characterPickerLoading; },
 
 		// Derived
 		get hasAssistantMessages() { return hasAssistantMessages; },
@@ -588,35 +331,36 @@ export function createSandboxState(options: SandboxStateOptions) {
 		sendMessage,
 		generate,
 		endSession,
-		handleSwipe,
-		handleSaveEdit,
-		handleDelete,
-		handleRegenerate,
+		handleSwipe: messageActions.handleSwipe,
+		handleSaveEdit: messageActions.handleSaveEdit,
+		handleDelete: messageActions.handleDelete,
+		handleRegenerate: messageActions.handleRegenerate,
 		handleImpersonate,
 		handleSceneAction,
+		handleWait: charactersModule.handleWait,
 
 		// Character picker actions
-		openCharacterPicker,
-		closeCharacterPicker,
-		addCharacter,
-		removeCharacter,
+		openCharacterPicker: charactersModule.openCharacterPicker,
+		closeCharacterPicker: charactersModule.closeCharacterPicker,
+		addCharacter: charactersModule.addCharacter,
+		removeCharacter: charactersModule.removeCharacter,
 
 		// World state actions
-		generateWorldState: handleGenerateWorldState,
-		clearWorldState: handleClearWorldState,
+		generateWorldState: worldStateModule.generate,
+		clearWorldState: worldStateModule.clear,
 
 		// World state display helpers
-		getEntityLabel,
-		getAttributeIcon,
-		toggleWorldSection,
-		toggleWorldItem,
+		getEntityLabel: worldStateModule.getEntityLabel,
+		getAttributeIcon: worldStateModule.getAttributeIcon,
+		toggleWorldSection: worldStateModule.toggleWorldSection,
+		toggleWorldItem: worldStateModule.toggleWorldItem,
 
 		// World state editing
-		startEditText,
-		startEditListItem,
-		cancelEdit,
-		saveTextEdit,
-		saveListItemEdit,
-		deleteListItem
+		startEditText: worldStateModule.startEditText,
+		startEditListItem: worldStateModule.startEditListItem,
+		cancelEdit: worldStateModule.cancelEdit,
+		saveTextEdit: worldStateModule.saveTextEdit,
+		saveListItemEdit: worldStateModule.saveListItemEdit,
+		deleteListItem: worldStateModule.deleteListItem
 	};
 }
