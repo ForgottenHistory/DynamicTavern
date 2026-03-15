@@ -5,8 +5,22 @@ import { llmLogService } from '../services/llmLogService';
 import { contentLlmSettingsService } from '../services/contentLlmSettingsService';
 import { logger } from '../utils/logger';
 import type { ChatCompletionResult } from './chatGeneration';
+import type { Message } from '$lib/server/db/schema';
 
 const PROMPTS_DIR = path.join(process.cwd(), 'data', 'prompts');
+
+/**
+ * Format sandbox messages into a conversation history string for narration prompts.
+ */
+export function formatSandboxHistory(messages: Message[], maxMessages = 20): string {
+	const recent = messages.slice(-maxMessages);
+	return recent
+		.map((m) => {
+			const name = m.senderName || m.role;
+			return `${name}: ${m.content}`;
+		})
+		.join('\n');
+}
 
 const DEFAULT_SANDBOX_LOCATION_PROMPT = `You are a narrator describing a location in a sandbox exploration mode.
 

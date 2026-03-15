@@ -181,8 +181,8 @@
 			{/each}
 		</div>
 
-		<!-- Typing Indicator (only show when not regenerating an existing message) -->
-		{#if isTyping && !generating}
+		<!-- Typing Indicator (only show when not regenerating and no placeholder message) -->
+		{#if isTyping && !generating && messages.at(-1)?.content}
 			<div class="mt-4">
 				{#if chatLayout === 'discord'}
 					<!-- Discord-style typing indicator -->

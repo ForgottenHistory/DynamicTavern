@@ -18,6 +18,7 @@ export function createCharacters(ctx: CharactersContext) {
 	let showCharacterPicker = $state(false);
 	let availableCharacters = $state<Character[]>([]);
 	let characterPickerLoading = $state(false);
+	let removingCharacterIds = $state<Set<number>>(new Set());
 
 	async function openCharacterPicker() {
 		characterPickerLoading = true;
@@ -55,6 +56,8 @@ export function createCharacters(ctx: CharactersContext) {
 	}
 
 	async function removeCharacter(characterId: number) {
+		if (removingCharacterIds.has(characterId)) return;
+		removingCharacterIds = new Set([...removingCharacterIds, characterId]);
 		try {
 			const result = await api.removeCharacter(ctx.sessionId, characterId);
 			ctx.setCharacters(result.characters);
@@ -63,6 +66,10 @@ export function createCharacters(ctx: CharactersContext) {
 		} catch (e) {
 			ctx.setError('Failed to remove character');
 			console.error(e);
+		} finally {
+			const next = new Set(removingCharacterIds);
+			next.delete(characterId);
+			removingCharacterIds = next;
 		}
 	}
 
@@ -88,6 +95,7 @@ export function createCharacters(ctx: CharactersContext) {
 		get showCharacterPicker() { return showCharacterPicker; },
 		get availableCharacters() { return availableCharacters; },
 		get characterPickerLoading() { return characterPickerLoading; },
+		get removingCharacterIds() { return removingCharacterIds; },
 
 		openCharacterPicker,
 		closeCharacterPicker,

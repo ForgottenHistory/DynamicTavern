@@ -49,7 +49,10 @@
 	let isNarrator = $derived(message.role === 'narrator');
 	let isAssistant = $derived(message.role === 'assistant');
 	let showSwipeControls = $derived(message.role === 'assistant' && isLast);
-	let showGeneratingPlaceholder = $derived(generating && isLast && (message.role === 'assistant' || message.role === 'narrator'));
+	let showGeneratingPlaceholder = $derived(
+		isLast && (message.role === 'assistant' || message.role === 'narrator') &&
+		(generating || !message.content)
+	);
 
 	// Per-character color from the map, fallback to --accent-secondary
 	let charColor = $derived(

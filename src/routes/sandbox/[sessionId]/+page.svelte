@@ -238,7 +238,8 @@
 											</button>
 											<button
 												onclick={() => state.removeCharacter(char.id)}
-												class="p-1 opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-red-400 hover:bg-[var(--bg-tertiary)] rounded transition"
+												disabled={state.removingCharacterIds.has(char.id)}
+												class="p-1 opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-red-400 hover:bg-[var(--bg-tertiary)] rounded transition disabled:opacity-30 disabled:cursor-not-allowed"
 												title="Remove {char.name}"
 											>
 												<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

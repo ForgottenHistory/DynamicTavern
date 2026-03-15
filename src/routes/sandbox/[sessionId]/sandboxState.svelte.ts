@@ -192,19 +192,45 @@ export function createSandboxState(options: SandboxStateOptions) {
 	}
 
 	async function generate(characterId?: number) {
-		if (generating || characters.length === 0) return;
-		generating = true;
+		if (sending || generating || characters.length === 0) return;
+		sending = true;
 		error = null;
+
+		// Pick the target character (same logic the server uses: specific or random)
+		const targetChar = characterId
+			? characters.find((c) => c.id === characterId) || characters[0]
+			: characters[Math.floor(Math.random() * characters.length)];
+
+		// Add optimistic placeholder so the UI shows "..." for the right character
+		const placeholderId = Date.now();
+		const placeholderMessage = {
+			id: placeholderId,
+			conversationId: null,
+			sandboxSessionId: options.sessionId,
+			role: 'assistant',
+			characterId: targetChar.id,
+			content: '',
+			swipes: null,
+			currentSwipe: 0,
+			senderName: targetChar.name,
+			senderAvatar: targetChar.thumbnailData || targetChar.imageData,
+			reasoning: null,
+			createdAt: new Date()
+		} satisfies Message;
+		messages = [...messages, placeholderMessage];
+		options.onScrollToBottom();
 
 		try {
 			const result = await api.generateResponse(options.sessionId, characterId);
 			messages = result.messages;
 			options.onScrollToBottom();
 		} catch (e) {
+			// Remove placeholder on failure
+			messages = messages.filter((m) => m.id !== placeholderId);
 			error = 'Failed to generate response';
 			console.error(e);
 		} finally {
-			generating = false;
+			sending = false;
 		}
 	}
 
@@ -317,6 +343,7 @@ export function createSandboxState(options: SandboxStateOptions) {
 		get showCharacterPicker() { return charactersModule.showCharacterPicker; },
 		get availableCharacters() { return charactersModule.availableCharacters; },
 		get characterPickerLoading() { return charactersModule.characterPickerLoading; },
+		get removingCharacterIds() { return charactersModule.removingCharacterIds; },
 
 		// Derived
 		get hasAssistantMessages() { return hasAssistantMessages; },

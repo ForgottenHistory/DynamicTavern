@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm';
 import { sandboxService } from '$lib/server/services/sandboxService';
 import { sandboxParticipantService } from '$lib/server/services/sandboxParticipantService';
 import { worldService } from '$lib/server/services/worldService';
-import { generateSandboxNarration } from '$lib/server/llm/sandboxNarration';
+import { generateSandboxNarration, formatSandboxHistory } from '$lib/server/llm/sandboxNarration';
 import { personaService } from '$lib/server/services/personaService';
 
 // GET - List all user's characters (for the picker), filtering out already-present ones
@@ -98,6 +98,7 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 
 		// Generate narrator entrance message
 		const userInfo = await personaService.getActiveUserInfo(parseInt(userId));
+		const existingMessages = await sandboxService.getMessages(sessionId);
 		const narration = await generateSandboxNarration({
 			userId: parseInt(userId),
 			locationType: 'character_enter',
@@ -108,7 +109,8 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 			character: {
 				name: character.name,
 				description: character.description || ''
-			}
+			},
+			history: formatSandboxHistory(existingMessages)
 		});
 
 		// Add narrator message
@@ -178,6 +180,7 @@ export const DELETE: RequestHandler = async ({ params, cookies, request }) => {
 			const world = await worldService.get(session.worldFile);
 			const location = world ? worldService.getLocation(world, session.currentLocationId) : null;
 			const userInfo = await personaService.getActiveUserInfo(parseInt(userId));
+			const existingMessages = await sandboxService.getMessages(sessionId);
 
 			const narration = await generateSandboxNarration({
 				userId: parseInt(userId),
@@ -189,7 +192,8 @@ export const DELETE: RequestHandler = async ({ params, cookies, request }) => {
 				character: {
 					name: character.name,
 					description: character.description || ''
-				}
+				},
+				history: formatSandboxHistory(existingMessages)
 			});
 
 			await sandboxService.addMessage(sessionId, parseInt(userId), {

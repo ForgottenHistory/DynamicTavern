@@ -250,7 +250,9 @@
 			// Normalize curly/smart quotes to straight quotes
 			processed = processed
 				.replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"')  // Various double quotes
-				.replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'"); // Various single quotes
+				.replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'") // Various single quotes
+				.replace(/[\u2014]/g, '-')  // Em dash
+				.replace(/[\u2013]/g, '-'); // En dash
 
 			// Normalize asterisks per line
 			processed = processed.split('\n').map(normalizeAsterisks).join('\n');

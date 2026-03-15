@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm';
 import { sandboxService } from '$lib/server/services/sandboxService';
 import { sandboxParticipantService } from '$lib/server/services/sandboxParticipantService';
 import { worldService } from '$lib/server/services/worldService';
-import { generateSandboxNarration } from '$lib/server/llm/sandboxNarration';
+import { generateSandboxNarration, formatSandboxHistory } from '$lib/server/llm/sandboxNarration';
 import { personaService } from '$lib/server/services/personaService';
 
 // POST - Wait: a random character joins the scene
@@ -56,6 +56,7 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 
 		// Generate narrator entrance message
 		const userInfo = await personaService.getActiveUserInfo(parseInt(userId));
+		const existingMessages = await sandboxService.getMessages(sessionId);
 		const narration = await generateSandboxNarration({
 			userId: parseInt(userId),
 			locationType: 'character_enter',
@@ -66,7 +67,8 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 			character: {
 				name: character.name,
 				description: character.description || ''
-			}
+			},
+			history: formatSandboxHistory(existingMessages)
 		});
 
 		// Add narrator message
