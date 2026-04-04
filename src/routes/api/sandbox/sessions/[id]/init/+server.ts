@@ -2,8 +2,9 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { sandboxService } from '$lib/server/services/sandboxService';
 import { worldService } from '$lib/server/services/worldService';
+import { generateInitialDynamicLocation } from '$lib/server/services/gameMasterService';
 
-// POST - Initialize a new session with a hardcoded intro message (no LLM call)
+// POST - Initialize a new session with intro narration
 export const POST: RequestHandler = async ({ params, cookies }) => {
 	const userId = cookies.get('userId');
 	if (!userId) {
@@ -28,16 +29,29 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 			return json({ messages: existingMessages, characters: activeCharacters });
 		}
 
-		const world = await worldService.get(session.worldFile);
-		if (!world) {
-			return json({ error: 'World not found' }, { status: 404 });
+		let locationName: string;
+		let locationDesc: string;
+
+		if (session.mode === 'dynamic') {
+			// Generate initial location via Game Master LLM
+			const initialLocation = await generateInitialDynamicLocation(session.dynamicTheme);
+			await sandboxService.updateDynamicLocation(
+				sessionId, parseInt(userId),
+				initialLocation.name, initialLocation.description
+			);
+			locationName = initialLocation.name;
+			locationDesc = initialLocation.description;
+		} else {
+			// Scene mode: use world file
+			const world = await worldService.get(session.worldFile);
+			if (!world) {
+				return json({ error: 'World not found' }, { status: 404 });
+			}
+			const location = worldService.getLocation(world, session.currentLocationId);
+			locationName = location?.name || session.currentLocationId;
+			locationDesc = location?.description || '';
 		}
 
-		const location = worldService.getLocation(world, session.currentLocationId);
-		const locationName = location?.name || session.currentLocationId;
-		const locationDesc = location?.description || '';
-
-		// Build hardcoded intro message
 		const intro = `You find yourself in **${locationName}**. ${locationDesc}`;
 
 		await sandboxService.addMessage(sessionId, parseInt(userId), {

@@ -1,5 +1,5 @@
 import type { Character, Message } from '$lib/server/db/schema';
-import type { World, WorldLocation } from '$lib/types/sandbox';
+import type { World, WorldLocation, SandboxMode } from '$lib/types/sandbox';
 import { goto } from '$app/navigation';
 import * as api from './sandboxActions';
 import { createWorldState } from './sandboxWorldState.svelte';
@@ -19,6 +19,7 @@ export interface SandboxStateOptions {
 
 export function createSandboxState(options: SandboxStateOptions) {
 	// Core state
+	let mode = $state<SandboxMode>('scene');
 	let world = $state<World | null>(null);
 	let location = $state<WorldLocation | null>(null);
 	let characters = $state<Character[]>([]);
@@ -101,13 +102,14 @@ export function createSandboxState(options: SandboxStateOptions) {
 				return;
 			}
 
+			mode = result.session?.mode || 'scene';
 			world = result.world;
 			location = result.location;
 			characters = result.characters || (result.character ? [result.character] : []);
 			messages = result.messages;
 			connections = result.connections;
 
-			if (messages.length === 0 && location && world) {
+			if (messages.length === 0) {
 				await generateInitialNarration();
 			}
 			setTimeout(() => options.onScrollToBottom(), 100);
@@ -120,12 +122,22 @@ export function createSandboxState(options: SandboxStateOptions) {
 	}
 
 	async function generateInitialNarration() {
-		if (!world || !location) return;
+		// Scene mode requires world + location; dynamic mode always inits
+		if (mode === 'scene' && (!world || !location)) return;
 
 		try {
 			const result = await api.initSession(options.sessionId);
 			characters = result.characters;
 			messages = result.messages;
+
+			// Dynamic mode: re-load session to get the generated location
+			if (mode === 'dynamic') {
+				const sessionResult = await api.loadSession(options.sessionId);
+				if (sessionResult?.location) {
+					location = sessionResult.location;
+				}
+			}
+
 			options.onScrollToBottom();
 		} catch (e) {
 			console.error('Failed to generate initial narration:', e);
@@ -183,6 +195,10 @@ export function createSandboxState(options: SandboxStateOptions) {
 		try {
 			const result = await api.sendMessage(options.sessionId, content);
 			messages = result.messages;
+			// Update location if the server returned one (dynamic mode GM may have changed it)
+			if (result.location) {
+				location = result.location;
+			}
 			options.onScrollToBottom();
 		} catch (e) {
 			error = 'Failed to send message';
@@ -300,6 +316,7 @@ export function createSandboxState(options: SandboxStateOptions) {
 
 	return {
 		// Core state
+		get mode() { return mode; },
 		get world() { return world; },
 		get location() { return location; },
 		get characters() { return characters; },

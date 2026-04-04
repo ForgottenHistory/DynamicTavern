@@ -7,7 +7,9 @@ import { llmService } from '$lib/server/services/llmService';
 import { llmSettingsFileService } from '$lib/server/services/llmSettingsFileService';
 import { llmLogService } from '$lib/server/services/llmLogService';
 import { generateSandboxNarration } from '$lib/server/llm/sandboxNarration';
+import { checkForLocationUpdate } from '$lib/server/services/gameMasterService';
 import type { Message } from '$lib/server/db/schema';
+import type { WorldLocation } from '$lib/types/sandbox';
 
 // GET - Get session messages
 export const GET: RequestHandler = async ({ params, cookies }) => {
@@ -54,17 +56,25 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 			return json({ error: 'Message content required' }, { status: 400 });
 		}
 
-		const session = await sandboxService.getSession(sessionId, parseInt(userId));
+		let session = await sandboxService.getSession(sessionId, parseInt(userId));
 		if (!session) {
 			return json({ error: 'Session not found' }, { status: 404 });
 		}
 
-		const world = await worldService.get(session.worldFile);
-		if (!world) {
-			return json({ error: 'World not found' }, { status: 404 });
+		// Build location context based on mode
+		let location: WorldLocation | null = null;
+		if (session.mode === 'dynamic') {
+			location = session.dynamicLocationName
+				? { name: session.dynamicLocationName, description: session.dynamicLocationDescription || '', connections: [] }
+				: { name: 'Unknown Location', description: '', connections: [] };
+		} else {
+			const world = await worldService.get(session.worldFile);
+			if (!world) {
+				return json({ error: 'World not found' }, { status: 404 });
+			}
+			location = worldService.getLocation(world, session.currentLocationId);
 		}
 
-		const location = worldService.getLocation(world, session.currentLocationId);
 		// Pick a random active character to respond
 		const activeCharacters = await sandboxService.getActiveCharacters(sessionId);
 		const character = activeCharacters.length > 0
@@ -79,6 +89,47 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 			senderName: userInfo.name,
 			senderAvatar: userInfo.avatarData
 		});
+
+		// Dynamic mode: check if location should update every 5 user messages
+		if (session.mode === 'dynamic') {
+			const userMessageCount = await sandboxService.getUserMessageCount(sessionId);
+			if (userMessageCount > 0 && userMessageCount % 5 === 0) {
+				const existingMessages = await sandboxService.getMessages(sessionId);
+				const recentMessages = existingMessages.slice(-10).map(m => ({
+					role: m.role,
+					content: m.content,
+					senderName: m.senderName
+				}));
+
+				const gmResult = await checkForLocationUpdate(
+					location?.name || 'Unknown Location',
+					location?.description || '',
+					recentMessages,
+					session.dynamicTheme
+				);
+
+				if (gmResult.shouldUpdate && gmResult.newLocation) {
+					await sandboxService.updateDynamicLocation(
+						sessionId, parseInt(userId),
+						gmResult.newLocation.name,
+						gmResult.newLocation.description
+					);
+
+					// Add narrator transition message
+					await sandboxService.addMessage(sessionId, parseInt(userId), {
+						role: 'narrator',
+						content: `The scene shifts... You find yourself in **${gmResult.newLocation.name}**. ${gmResult.newLocation.description}`,
+						senderName: 'Narrator'
+					});
+
+					// Update location context for the character response
+					location = { name: gmResult.newLocation.name, description: gmResult.newLocation.description, connections: [] };
+
+					// Re-fetch session for updated state
+					session = (await sandboxService.getSession(sessionId, parseInt(userId)))!;
+				}
+			}
+		}
 
 		let assistantMessage: Message | null = null;
 
@@ -107,7 +158,7 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 			const narration = await generateSandboxNarration({
 				userId: parseInt(userId),
 				locationType: 'explore',
-				locationName: location?.name || session.currentLocationId,
+				locationName: location?.name || 'Unknown Location',
 				locationDescription: location?.description || '',
 				userName: userInfo.name,
 				userDescription: userInfo.description || '',
@@ -126,10 +177,16 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 		// Get updated messages
 		const messages = await sandboxService.getMessages(sessionId);
 
+		// Include current location in response so client can update sidebar
+		const currentLocation = session.mode === 'dynamic'
+			? { name: session.dynamicLocationName || '', description: session.dynamicLocationDescription || '', connections: [] }
+			: location;
+
 		return json({
 			userMessage,
 			assistantMessage,
-			messages
+			messages,
+			location: currentLocation
 		});
 	} catch (error) {
 		console.error('Failed to send message:', error);

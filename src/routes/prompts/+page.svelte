@@ -336,15 +336,11 @@ You will be given the current location and recent messages. Decide if:
 - The world state needs refreshing (mood, clothes, environment changed)
 - Nothing needs to change
 
-Respond with JSON:
-{
-  "action": "none" | "update_location" | "spawn_character" | "remove_character" | "refresh_world_state",
-  "reason": "brief explanation",
-  "locationUpdate": {
-    "name": "new location name",
-    "description": "vivid 2-3 sentence description of the new location"
-  }
-}`
+Respond with YAML only:
+action: none or update_location or spawn_character or remove_character or refresh_world_state
+reason: brief explanation
+location_name: new location name
+location_description: vivid 2-3 sentence description of the new location`
 			}
 		},
 		content: {

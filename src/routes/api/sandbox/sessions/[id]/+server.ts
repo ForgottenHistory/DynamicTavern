@@ -21,19 +21,37 @@ export const GET: RequestHandler = async ({ params, cookies }) => {
 			return json({ error: 'Session not found' }, { status: 404 });
 		}
 
+		const activeCharacters = await sandboxService.getActiveCharacters(sessionId);
+		let character: typeof activeCharacters[0] | null = activeCharacters[0] || null;
+		if (activeCharacters.length === 0 && session.currentCharacterId) {
+			character = await sandboxService.getCurrentCharacter(session);
+		}
+		const sessionMessages = await sandboxService.getMessages(sessionId);
+
+		// Dynamic mode: no world file, location from session fields
+		if (session.mode === 'dynamic') {
+			const location = session.dynamicLocationName
+				? { name: session.dynamicLocationName, description: session.dynamicLocationDescription || '', connections: [] }
+				: null;
+
+			return json({
+				session,
+				world: null,
+				location,
+				character,
+				characters: activeCharacters,
+				messages: sessionMessages,
+				connections: []
+			});
+		}
+
+		// Scene mode: load from world file
 		const world = await worldService.get(session.worldFile);
 		if (!world) {
 			return json({ error: 'World not found' }, { status: 404 });
 		}
 
 		const location = worldService.getLocation(world, session.currentLocationId);
-		const activeCharacters = await sandboxService.getActiveCharacters(sessionId);
-		// Legacy fallback: if no participants but session has currentCharacterId
-		let character: typeof activeCharacters[0] | null = activeCharacters[0] || null;
-		if (activeCharacters.length === 0 && session.currentCharacterId) {
-			character = await sandboxService.getCurrentCharacter(session);
-		}
-		const messages = await sandboxService.getMessages(sessionId);
 		const connections = worldService.getConnections(world, session.currentLocationId);
 
 		return json({
@@ -42,7 +60,7 @@ export const GET: RequestHandler = async ({ params, cookies }) => {
 			location,
 			character,
 			characters: activeCharacters,
-			messages,
+			messages: sessionMessages,
 			connections
 		});
 	} catch (error) {

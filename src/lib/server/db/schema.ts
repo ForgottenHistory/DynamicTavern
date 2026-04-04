@@ -320,11 +320,16 @@ export const sandboxSessions = sqliteTable('sandbox_sessions', {
 	userId: integer('user_id')
 		.notNull()
 		.references(() => users.id, { onDelete: 'cascade' }),
-	worldFile: text('world_file').notNull(), // World JSON filename (without extension)
-	currentLocationId: text('current_location_id').notNull(), // Current location in world
+	mode: text('mode').notNull().default('scene'), // 'scene' or 'dynamic'
+	worldFile: text('world_file').notNull(), // World JSON filename (without extension), '_dynamic' for dynamic mode
+	currentLocationId: text('current_location_id').notNull(), // Current location in world, '_dynamic' for dynamic mode
 	currentCharacterId: integer('current_character_id') // Character at current location (nullable)
 		.references(() => characters.id, { onDelete: 'set null' }),
 	worldInfo: text('world_info'), // JSON string storing world state (mood, clothes, etc.)
+	dynamicTheme: text('dynamic_theme'), // World theme for dynamic mode (e.g. 'fantasy', 'modern_day')
+	dynamicLocationName: text('dynamic_location_name'), // LLM-generated location name (dynamic mode)
+	dynamicLocationDescription: text('dynamic_location_description'), // LLM-generated location description (dynamic mode)
+	locationHistory: text('location_history'), // JSON array of past locations (dynamic mode)
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.$defaultFn(() => new Date()),

@@ -71,7 +71,7 @@
 							</svg>
 						</a>
 						<div>
-							<h1 class="text-lg font-semibold text-[var(--text-primary)]">{state.world?.name}</h1>
+							<h1 class="text-lg font-semibold text-[var(--text-primary)]">{state.mode === 'dynamic' ? 'Dynamic Adventure' : state.world?.name}</h1>
 							<p class="text-sm text-[var(--text-muted)]">{state.location?.name}</p>
 						</div>
 					</div>
@@ -475,31 +475,37 @@
 						</div>
 					{/if}
 
-					<!-- Connections -->
-					<div class="p-4">
-						<h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Go to</h3>
-						<div class="space-y-2">
-							{#each state.connections as connection}
-								<button
-									onclick={() => state.move(connection.id)}
-									disabled={state.moving}
-									class="w-full flex items-center gap-3 p-3 bg-[var(--bg-tertiary)] rounded-lg hover:bg-[var(--accent-primary)]/10 transition text-left disabled:opacity-50"
-								>
-									<svg class="w-5 h-5 text-[var(--accent-primary)] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
-									</svg>
-									<div class="flex-1 min-w-0">
-										<p class="font-medium text-[var(--text-primary)] truncate">{connection.location.name}</p>
-									</div>
-								</button>
-							{/each}
+					<!-- Connections (scene mode only) -->
+					{#if state.mode === 'scene'}
+						<div class="p-4">
+							<h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Go to</h3>
+							<div class="space-y-2">
+								{#each state.connections as connection}
+									<button
+										onclick={() => state.move(connection.id)}
+										disabled={state.moving}
+										class="w-full flex items-center gap-3 p-3 bg-[var(--bg-tertiary)] rounded-lg hover:bg-[var(--accent-primary)]/10 transition text-left disabled:opacity-50"
+									>
+										<svg class="w-5 h-5 text-[var(--accent-primary)] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+										</svg>
+										<div class="flex-1 min-w-0">
+											<p class="font-medium text-[var(--text-primary)] truncate">{connection.location.name}</p>
+										</div>
+									</button>
+								{/each}
+							</div>
 						</div>
-					</div>
 
-					{#if state.moving}
-						<div class="p-4 text-center">
-							<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--accent-primary)] mx-auto"></div>
-							<p class="text-sm text-[var(--text-muted)] mt-2">Moving...</p>
+						{#if state.moving}
+							<div class="p-4 text-center">
+								<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--accent-primary)] mx-auto"></div>
+								<p class="text-sm text-[var(--text-muted)] mt-2">Moving...</p>
+							</div>
+						{/if}
+					{:else}
+						<div class="p-4">
+							<p class="text-xs text-[var(--text-muted)] italic">Locations change dynamically as you explore through conversation.</p>
 						</div>
 					{/if}
 				</div>

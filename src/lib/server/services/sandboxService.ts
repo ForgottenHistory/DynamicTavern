@@ -1,9 +1,9 @@
 import { db } from '$lib/server/db';
 import { sandboxSessions, messages, characters, type Character, type Message } from '$lib/server/db/schema';
-import { eq, and, gte, asc } from 'drizzle-orm';
+import { eq, and, gte, asc, count } from 'drizzle-orm';
 import { worldService } from './worldService';
 import { sandboxParticipantService } from './sandboxParticipantService';
-import type { World } from '$lib/types/sandbox';
+import type { World, LocationHistoryEntry } from '$lib/types/sandbox';
 
 class SandboxService {
 	/**
@@ -337,6 +337,73 @@ class SandboxService {
 	 */
 	async getActiveCharacters(sessionId: number): Promise<Character[]> {
 		return sandboxParticipantService.getActiveCharacters(sessionId);
+	}
+
+	/**
+	 * Create a dynamic sandbox session (no world file)
+	 */
+	async createDynamicSession(userId: number, theme?: string): Promise<typeof sandboxSessions.$inferSelect> {
+		const [session] = await db
+			.insert(sandboxSessions)
+			.values({
+				userId,
+				mode: 'dynamic',
+				worldFile: '_dynamic',
+				currentLocationId: '_dynamic',
+				dynamicTheme: theme || null
+			})
+			.returning();
+
+		return session;
+	}
+
+	/**
+	 * Update the dynamic location, saving the old one to history
+	 */
+	async updateDynamicLocation(
+		sessionId: number,
+		userId: number,
+		name: string,
+		description: string
+	): Promise<void> {
+		const session = await this.getSession(sessionId, userId);
+		if (!session) return;
+
+		// Append old location to history if it exists
+		let history: LocationHistoryEntry[] = [];
+		try {
+			history = session.locationHistory ? JSON.parse(session.locationHistory) : [];
+		} catch { /* ignore */ }
+
+		if (session.dynamicLocationName) {
+			history.push({
+				name: session.dynamicLocationName,
+				description: session.dynamicLocationDescription || '',
+				enteredAt: session.updatedAt?.toISOString() || new Date().toISOString()
+			});
+		}
+
+		await db
+			.update(sandboxSessions)
+			.set({
+				dynamicLocationName: name,
+				dynamicLocationDescription: description,
+				locationHistory: JSON.stringify(history),
+				updatedAt: new Date()
+			})
+			.where(and(eq(sandboxSessions.id, sessionId), eq(sandboxSessions.userId, userId)));
+	}
+
+	/**
+	 * Count user messages in a session
+	 */
+	async getUserMessageCount(sessionId: number): Promise<number> {
+		const [result] = await db
+			.select({ count: count() })
+			.from(messages)
+			.where(and(eq(messages.sandboxSessionId, sessionId), eq(messages.role, 'user')));
+
+		return result?.count || 0;
 	}
 }
 

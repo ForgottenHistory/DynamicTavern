@@ -1,5 +1,5 @@
 import type { Message, Character } from '$lib/server/db/schema';
-import type { World, WorldLocation } from '$lib/types/sandbox';
+import type { World, WorldLocation, SandboxMode } from '$lib/types/sandbox';
 import type { WorldStateData } from '$lib/server/services/worldInfoService';
 import type { ImpersonateStyle, SceneActionType } from '$lib/types/chat';
 
@@ -11,8 +11,9 @@ export interface ConnectionInfo {
 }
 
 export interface SessionData {
-	world: World;
-	location: WorldLocation;
+	session: { mode: SandboxMode; [key: string]: any };
+	world: World | null;
+	location: WorldLocation | null;
 	character: Character | null;
 	characters: Character[];
 	messages: Message[];
@@ -54,7 +55,7 @@ export async function moveToLocation(sessionId: number, locationId: string, foll
 	return response.json();
 }
 
-export async function sendMessage(sessionId: number, content: string): Promise<{ messages: Message[] }> {
+export async function sendMessage(sessionId: number, content: string): Promise<{ messages: Message[]; location?: WorldLocation }> {
 	const response = await fetch(`/api/sandbox/sessions/${sessionId}/messages`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },

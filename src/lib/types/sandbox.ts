@@ -1,3 +1,5 @@
+export type SandboxMode = 'scene' | 'dynamic';
+
 export interface CharacterFilters {
 	preferTags?: string[];
 	excludeTags?: string[];
@@ -19,3 +21,13 @@ export interface World {
 	locations: Record<string, WorldLocation>;
 }
 
+export interface DynamicLocation {
+	name: string;
+	description: string;
+}
+
+export interface LocationHistoryEntry {
+	name: string;
+	description: string;
+	enteredAt: string; // ISO date string
+}

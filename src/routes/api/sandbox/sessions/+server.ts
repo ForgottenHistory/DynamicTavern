@@ -16,6 +16,13 @@ export const GET: RequestHandler = async ({ cookies }) => {
 		// Enrich sessions with world/location names
 		const enriched = await Promise.all(
 			sessions.map(async (session) => {
+				if (session.mode === 'dynamic') {
+					return {
+						...session,
+						worldName: 'Dynamic Adventure',
+						locationName: session.dynamicLocationName || 'Starting...'
+					};
+				}
 				const world = await worldService.get(session.worldFile);
 				const location = world ? worldService.getLocation(world, session.currentLocationId) : null;
 				return {
@@ -41,7 +48,13 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
 	}
 
 	try {
-		const { worldFile } = await request.json();
+		const { worldFile, mode, theme } = await request.json();
+
+		// Dynamic mode: no world file needed
+		if (mode === 'dynamic') {
+			const session = await sandboxService.createDynamicSession(parseInt(userId), theme);
+			return json({ session, world: null, location: null });
+		}
 
 		if (!worldFile) {
 			return json({ error: 'World file required' }, { status: 400 });
