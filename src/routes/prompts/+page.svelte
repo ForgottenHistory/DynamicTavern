@@ -8,7 +8,7 @@
 	let { data }: { data: PageData } = $props();
 
 	// Tab state
-	type PromptsTab = 'chat' | 'impersonate' | 'decision' | 'content' | 'image' | 'action' | 'world';
+	type PromptsTab = 'chat' | 'impersonate' | 'gameMaster' | 'content' | 'image' | 'action' | 'world';
 	let activeTab = $state<PromptsTab>('chat');
 
 	let prompts = $state<Record<string, Record<string, string>>>({});
@@ -28,7 +28,7 @@
 		{ id: 'impersonate' as const, label: 'Impersonate', description: 'Prompts for AI-generated user messages in different tones' },
 		{ id: 'action' as const, label: 'Action', description: 'Prompts for narrator actions (look, enter, leave, etc.)' },
 		{ id: 'world' as const, label: 'World', description: 'Prompts for world state generation (mood, clothes, position)' },
-		{ id: 'decision' as const, label: 'Decision', description: 'Prompts for decision-making before sending content' },
+		{ id: 'gameMaster' as const, label: 'Game Master', description: 'Prompts for sandbox scene management (locations, events, characters)' },
 		{ id: 'content' as const, label: 'Content', description: 'Prompts for content creation and character card cleaning' },
 		{ id: 'image' as const, label: 'Image', description: 'Prompts for image tag generation' }
 	];
@@ -323,28 +323,28 @@ Guidelines:
 `
 			}
 		},
-		decision: {
+		gameMaster: {
 			system: {
-				title: 'Decision Engine Prompt',
-				description: 'Analyzes conversations to decide if the character should send an image',
-				default: `You are a decision engine that analyzes roleplay conversations to determine if the character should send an image.
+				title: 'Game Master Prompt',
+				description: 'Manages sandbox scene state — decides when locations, characters, and events should change',
+				default: `You are the Game Master for a sandbox roleplay session. Your job is to analyze the recent conversation and decide if any scene changes should happen.
 
-Analyze the recent conversation and decide if this is an appropriate moment for the character to send an image/photo of themselves.
+You will be given the current location and recent messages. Decide if:
+- The location should update (the user moved or the environment changed significantly)
+- A new character should enter the scene
+- A character should leave the scene
+- The world state needs refreshing (mood, clothes, environment changed)
+- Nothing needs to change
 
-Consider:
-- Did the user ask to see the character or request a photo?
-- Is there a natural moment where the character would share how they look?
-- Has it been a while since an image was sent and the conversation warrants one?
-- Would sending an image enhance the roleplay experience at this moment?
-
-Do NOT send an image if:
-- The conversation is purely dialogue/text focused
-- An image was just sent recently
-- The scene doesn't call for visual content
-
-Respond with key-value pairs, one per line:
-send_image: true/false
-reason: brief explanation for your decision`
+Respond with JSON:
+{
+  "action": "none" | "update_location" | "spawn_character" | "remove_character" | "refresh_world_state",
+  "reason": "brief explanation",
+  "locationUpdate": {
+    "name": "new location name",
+    "description": "vivid 2-3 sentence description of the new location"
+  }
+}`
 			}
 		},
 		content: {
@@ -547,7 +547,7 @@ Output ONLY comma-separated tags, no explanations.`
 			{ name: '{{scenario}}', description: 'Roleplay scenario' },
 			{ name: '{{history}}', description: 'Conversation history' }
 		],
-		decision: [],
+		gameMaster: [],
 		content: [
 			{ name: '{{input}}', description: 'The original text to be rewritten' },
 			{ name: '{{char}}', description: 'Character name' },

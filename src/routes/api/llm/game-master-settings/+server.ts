@@ -10,11 +10,11 @@ export const GET: RequestHandler = async ({ cookies }) => {
 			return json({ error: 'Not authenticated' }, { status: 401 });
 		}
 
-		const settings = llmSettingsFileService.getSettings('decision');
+		const settings = llmSettingsFileService.getSettings('gameMaster');
 
 		return json({ settings });
 	} catch (error: any) {
-		console.error('Failed to get decision engine settings:', error);
+		console.error('Failed to get game master settings:', error);
 		return json({ error: 'Failed to get settings' }, { status: 500 });
 	}
 };
@@ -29,11 +29,11 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 		const body = await request.json();
 
-		const settings = llmSettingsFileService.updateSettings('decision', body);
+		const settings = llmSettingsFileService.updateSettings('gameMaster', body);
 
 		return json({ settings, message: 'Settings updated successfully' });
 	} catch (error: any) {
-		console.error('Failed to update decision engine settings:', error);
+		console.error('Failed to update game master settings:', error);
 		return json({ error: 'Failed to update settings' }, { status: 500 });
 	}
 };

@@ -33,7 +33,7 @@ export interface LlmSettingsData {
  */
 export interface AllLlmSettings {
 	chat: LlmSettingsData;
-	decision: LlmSettingsData;
+	gameMaster: LlmSettingsData;
 	content: LlmSettingsData;
 	image: LlmSettingsData;
 }
@@ -77,7 +77,7 @@ const DEFAULT_SETTINGS: AllLlmSettings = {
 		minP: 0.0,
 		repetitionPenalty: 1.0
 	},
-	decision: {
+	gameMaster: {
 		provider: 'openrouter',
 		model: 'anthropic/claude-3.5-sonnet',
 		temperature: 0.3,
@@ -134,9 +134,11 @@ class LlmSettingsFileService {
 				const data = readFileSync(this.settingsPath, 'utf-8');
 				const parsed = JSON.parse(data);
 				// Merge with defaults to ensure all fields exist
+				// Support migration from old 'decision' key to 'gameMaster'
+				const gameMasterData = parsed.gameMaster || parsed.decision;
 				return {
 					chat: { ...DEFAULT_SETTINGS.chat, ...parsed.chat },
-					decision: { ...DEFAULT_SETTINGS.decision, ...parsed.decision },
+					gameMaster: { ...DEFAULT_SETTINGS.gameMaster, ...gameMasterData },
 					content: { ...DEFAULT_SETTINGS.content, ...parsed.content },
 					image: { ...DEFAULT_SETTINGS.image, ...parsed.image }
 				};

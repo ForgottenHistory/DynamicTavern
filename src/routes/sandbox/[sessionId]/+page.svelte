@@ -237,6 +237,15 @@
 												</svg>
 											</button>
 											<button
+												onclick={() => state.toggleFollow(char.id)}
+												class="p-1 {state.followingCharacterIds.has(char.id) ? 'text-[var(--accent-primary)]' : 'opacity-0 group-hover:opacity-100 text-[var(--text-muted)]'} hover:text-[var(--accent-primary)] hover:bg-[var(--bg-tertiary)] rounded transition"
+												title="{state.followingCharacterIds.has(char.id) ? 'Stop following' : 'Follow'} {char.name}"
+											>
+												<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+												</svg>
+											</button>
+											<button
 												onclick={() => state.removeCharacter(char.id)}
 												disabled={state.removingCharacterIds.has(char.id)}
 												class="p-1 opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-red-400 hover:bg-[var(--bg-tertiary)] rounded transition disabled:opacity-30 disabled:cursor-not-allowed"

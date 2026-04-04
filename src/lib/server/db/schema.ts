@@ -65,7 +65,7 @@ export const llmSettings = sqliteTable('llm_settings', {
 	repetitionPenalty: real('repetition_penalty').notNull().default(1.0)
 });
 
-export const decisionEngineSettings = sqliteTable('decision_engine_settings', {
+export const gameMasterSettings = sqliteTable('decision_engine_settings', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
 	userId: integer('user_id')
 		.notNull()
@@ -340,8 +340,8 @@ export type UserPersona = typeof userPersonas.$inferSelect;
 export type NewUserPersona = typeof userPersonas.$inferInsert;
 export type LlmSettings = typeof llmSettings.$inferSelect;
 export type NewLlmSettings = typeof llmSettings.$inferInsert;
-export type DecisionEngineSettings = typeof decisionEngineSettings.$inferSelect;
-export type NewDecisionEngineSettings = typeof decisionEngineSettings.$inferInsert;
+export type GameMasterSettings = typeof gameMasterSettings.$inferSelect;
+export type NewGameMasterSettings = typeof gameMasterSettings.$inferInsert;
 export type ContentLlmSettings = typeof contentLlmSettings.$inferSelect;
 export type NewContentLlmSettings = typeof contentLlmSettings.$inferInsert;
 export type ImageLlmSettings = typeof imageLlmSettings.$inferSelect;

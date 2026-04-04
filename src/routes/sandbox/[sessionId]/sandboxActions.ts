@@ -44,11 +44,11 @@ export async function initSession(sessionId: number): Promise<{ messages: Messag
 	return response.json();
 }
 
-export async function moveToLocation(sessionId: number, locationId: string): Promise<MoveResult> {
+export async function moveToLocation(sessionId: number, locationId: string, followingCharacterIds?: number[]): Promise<MoveResult> {
 	const response = await fetch(`/api/sandbox/sessions/${sessionId}/move`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ locationId })
+		body: JSON.stringify({ locationId, followingCharacterIds })
 	});
 	if (!response.ok) throw new Error('Failed to move');
 	return response.json();

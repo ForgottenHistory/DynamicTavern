@@ -19,6 +19,7 @@ export function createCharacters(ctx: CharactersContext) {
 	let availableCharacters = $state<Character[]>([]);
 	let characterPickerLoading = $state(false);
 	let removingCharacterIds = $state<Set<number>>(new Set());
+	let followingCharacterIds = $state<Set<number>>(new Set());
 
 	async function openCharacterPicker() {
 		characterPickerLoading = true;
@@ -91,16 +92,34 @@ export function createCharacters(ctx: CharactersContext) {
 		}
 	}
 
+	function toggleFollow(characterId: number) {
+		const next = new Set(followingCharacterIds);
+		if (next.has(characterId)) next.delete(characterId); else next.add(characterId);
+		followingCharacterIds = next;
+	}
+
+	function getFollowingIds(): number[] {
+		return [...followingCharacterIds];
+	}
+
+	function clearFollowing() {
+		followingCharacterIds = new Set();
+	}
+
 	return {
 		get showCharacterPicker() { return showCharacterPicker; },
 		get availableCharacters() { return availableCharacters; },
 		get characterPickerLoading() { return characterPickerLoading; },
 		get removingCharacterIds() { return removingCharacterIds; },
+		get followingCharacterIds() { return followingCharacterIds; },
 
 		openCharacterPicker,
 		closeCharacterPicker,
 		addCharacter,
 		removeCharacter,
-		handleWait
+		handleWait,
+		toggleFollow,
+		getFollowingIds,
+		clearFollowing
 	};
 }

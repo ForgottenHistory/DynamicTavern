@@ -10,7 +10,7 @@
 	let { data }: { data: PageData } = $props();
 
 	// Tab state
-	type SettingsTab = 'chat' | 'decision' | 'content' | 'image';
+	type SettingsTab = 'chat' | 'gameMaster' | 'content' | 'image';
 	let activeTab = $state<SettingsTab>('chat');
 
 	// Default settings structure
@@ -29,8 +29,8 @@
 	// Chat LLM settings
 	let chatSettings = $state({ ...defaultLlmSettings });
 
-	// Decision Engine settings
-	let decisionSettings = $state({
+	// Game Master LLM settings
+	let gameMasterSettings = $state({
 		...defaultLlmSettings,
 		temperature: 0.3,
 		maxTokens: 200,
@@ -73,9 +73,9 @@
 	async function loadSettings() {
 		loading = true;
 		try {
-			const [chatRes, decisionRes, contentRes, imageRes] = await Promise.all([
+			const [chatRes, gameMasterRes, contentRes, imageRes] = await Promise.all([
 				fetch('/api/llm/settings'),
-				fetch('/api/llm/decision-settings'),
+				fetch('/api/llm/game-master-settings'),
 				fetch('/api/llm/content-settings'),
 				fetch('/api/llm/image-settings')
 			]);
@@ -85,9 +85,9 @@
 				chatSettings = chatData.settings;
 			}
 
-			const decisionData = await decisionRes.json();
-			if (decisionData.settings) {
-				decisionSettings = decisionData.settings;
+			const gameMasterData = await gameMasterRes.json();
+			if (gameMasterData.settings) {
+				gameMasterSettings = gameMasterData.settings;
 			}
 
 			const contentData = await contentRes.json();
@@ -133,7 +133,7 @@
 	}
 
 	const saveChatSettings = () => saveSettings('/api/llm/settings', chatSettings, 'Chat settings saved successfully!');
-	const saveDecisionSettings = () => saveSettings('/api/llm/decision-settings', decisionSettings, 'Decision engine settings saved successfully!');
+	const saveGameMasterSettings = () => saveSettings('/api/llm/game-master-settings', gameMasterSettings, 'Game Master settings saved successfully!');
 	const saveContentSettings = () => saveSettings('/api/llm/content-settings', contentSettings, 'Content LLM settings saved successfully!');
 	const saveImageSettings = () => saveSettings('/api/llm/image-settings', imageSettings, 'Image LLM settings saved successfully!');
 
@@ -162,8 +162,8 @@
 				case 'chat':
 					currentSettings = chatSettings;
 					break;
-				case 'decision':
-					currentSettings = decisionSettings;
+				case 'gameMaster':
+					currentSettings = gameMasterSettings;
 					break;
 				case 'content':
 					currentSettings = contentSettings;
@@ -221,8 +221,8 @@
 			case 'chat':
 				chatSettings = settings;
 				break;
-			case 'decision':
-				decisionSettings = settings;
+			case 'gameMaster':
+				gameMasterSettings = settings;
 				break;
 			case 'content':
 				contentSettings = settings;
@@ -262,7 +262,7 @@
 
 	const tabs = [
 		{ id: 'chat' as const, label: 'Chat', description: 'Configure the model for character conversations' },
-		{ id: 'decision' as const, label: 'Decision', description: 'Configure the model that makes decisions before sending content' },
+		{ id: 'gameMaster' as const, label: 'Game Master', description: 'Configure the model that manages sandbox scenes, locations, and events' },
 		{ id: 'content' as const, label: 'Content', description: 'Configure the model for content creation and generation' },
 		{ id: 'image' as const, label: 'Image', description: 'Configure the model for image generation' }
 	];
@@ -338,16 +338,16 @@
 				</div>
 			{/if}
 
-			<!-- Decision Engine Tab -->
-			{#if activeTab === 'decision'}
+			<!-- Game Master Tab -->
+			{#if activeTab === 'gameMaster'}
 				<div class="bg-[var(--bg-secondary)] rounded-xl shadow-md border border-[var(--border-primary)] overflow-hidden">
 					{#if loading}
 						<SettingsLoadingSkeleton />
 					{:else}
 						<LLMSettingsForm
-							bind:settings={decisionSettings}
+							bind:settings={gameMasterSettings}
 							{saving}
-							onSave={saveDecisionSettings}
+							onSave={saveGameMasterSettings}
 							onSavePreset={() => (showSavePresetDialog = true)}
 							onReload={loadSettings}
 						/>

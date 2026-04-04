@@ -48,7 +48,7 @@ npm run db:studio     # Open Drizzle Studio (visual DB editor)
 
 ### Database Schema (`src/lib/server/db/schema.ts`)
 
-Tables: users, llmSettings, decisionEngineSettings, contentLlmSettings, imageLlmSettings, llmPresets, characters, tagLibrary, conversations, messages, sceneParticipants
+Tables: users, llmSettings, gameMasterSettings, contentLlmSettings, imageLlmSettings, llmPresets, characters, tagLibrary, conversations, messages, sceneParticipants
 
 - Characters store card data as JSON, images as Base64
 - Messages support "swipes" (alternative responses) as JSON array
@@ -119,7 +119,7 @@ Four separate LLM configurations, each with its own settings service:
 | LLM Type | Purpose | Settings Service |
 |----------|---------|------------------|
 | **Chat** | Character conversations | `llmSettingsService.ts` |
-| **Decision** | Pre-processing decisions before content | `decisionEngineSettingsService.ts` |
+| **Game Master** | Sandbox scene management (locations, events) | `gameMasterSettingsService.ts` |
 | **Content** | Content creation/generation | `contentLlmSettingsService.ts` |
 | **Image** | Generate Danbooru tags for SD | `imageLlmSettingsService.ts` |
 

@@ -140,7 +140,8 @@ export function createSandboxState(options: SandboxStateOptions) {
 		error = null;
 
 		try {
-			const result = await api.moveToLocation(options.sessionId, locationId);
+			const followingIds = charactersModule.getFollowingIds();
+			const result = await api.moveToLocation(options.sessionId, locationId, followingIds.length > 0 ? followingIds : undefined);
 			location = result.location;
 			characters = result.characters || (result.character ? [result.character] : []);
 			messages = result.messages;
@@ -344,6 +345,7 @@ export function createSandboxState(options: SandboxStateOptions) {
 		get availableCharacters() { return charactersModule.availableCharacters; },
 		get characterPickerLoading() { return charactersModule.characterPickerLoading; },
 		get removingCharacterIds() { return charactersModule.removingCharacterIds; },
+		get followingCharacterIds() { return charactersModule.followingCharacterIds; },
 
 		// Derived
 		get hasAssistantMessages() { return hasAssistantMessages; },
@@ -371,6 +373,7 @@ export function createSandboxState(options: SandboxStateOptions) {
 		closeCharacterPicker: charactersModule.closeCharacterPicker,
 		addCharacter: charactersModule.addCharacter,
 		removeCharacter: charactersModule.removeCharacter,
+		toggleFollow: charactersModule.toggleFollow,
 
 		// World state actions
 		generateWorldState: worldStateModule.generate,

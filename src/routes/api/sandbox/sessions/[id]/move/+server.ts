@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { sandboxService } from '$lib/server/services/sandboxService';
 import { worldService } from '$lib/server/services/worldService';
 import { generateSandboxNarration } from '$lib/server/llm/sandboxNarration';
+import { sandboxParticipantService } from '$lib/server/services/sandboxParticipantService';
 import { personaService } from '$lib/server/services/personaService';
 
 // POST - Move to a new location
@@ -21,7 +22,7 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 	}
 
 	try {
-		const { locationId } = await request.json();
+		const { locationId, followingCharacterIds } = await request.json();
 
 		if (!locationId) {
 			return json({ error: 'Location ID required' }, { status: 400 });
@@ -32,7 +33,15 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 			return json({ error: 'Invalid move - location not connected or session not found' }, { status: 400 });
 		}
 
-		const { session, characters: activeCharacters } = result;
+		// Re-add following characters to the new scene
+		if (Array.isArray(followingCharacterIds) && followingCharacterIds.length > 0) {
+			for (const charId of followingCharacterIds) {
+				await sandboxParticipantService.addCharacterToScene(sessionId, charId);
+			}
+		}
+
+		const activeCharacters = await sandboxParticipantService.getActiveCharacters(sessionId);
+		const { session } = result;
 		const character = activeCharacters.length > 0 ? activeCharacters[0] : null;
 
 		const world = await worldService.get(session.worldFile);

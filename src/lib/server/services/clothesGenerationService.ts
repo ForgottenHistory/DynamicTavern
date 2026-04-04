@@ -1,4 +1,4 @@
-import { decisionEngineSettingsService } from './decisionEngineSettingsService';
+import { gameMasterSettingsService } from './gameMasterSettingsService';
 import { callLlm } from './llmCallService';
 import { type WorldStateData, type EntityState, type WorldAttribute, type ListItem } from './worldInfoService';
 import fs from 'fs/promises';
@@ -339,7 +339,7 @@ Guidelines:
 			const charNames = characters.map(c => c.name).join(', ');
 			console.log(`🌍 Generating world state for ${charNames} and ${params.userName}...`);
 
-			const settings = decisionEngineSettingsService.getSettings();
+			const settings = gameMasterSettingsService.getSettings();
 
 			const previousStateText = params.previousState ? formatPreviousState(params.previousState) : '';
 
