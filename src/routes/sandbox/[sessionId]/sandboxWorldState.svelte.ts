@@ -61,6 +61,10 @@ export function createWorldState(ctx: WorldStateContext) {
 		worldState = null;
 	}
 
+	function set(newState: WorldStateData | null) {
+		worldState = newState;
+	}
+
 	// --- Display helpers ---
 
 	function getEntityLabel(entityKey: string): string {
@@ -174,6 +178,7 @@ export function createWorldState(ctx: WorldStateContext) {
 		generate,
 		clear,
 		reset,
+		set,
 		setSidebarEnabled,
 		getEntityLabel,
 		getAttributeIcon,

@@ -1,13 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { sandboxService } from '$lib/server/services/sandboxService';
+import { sandboxService, formatWorldStateSummary } from '$lib/server/services/sandboxService';
 import { worldService } from '$lib/server/services/worldService';
 import { personaService } from '$lib/server/services/personaService';
 import { llmService } from '$lib/server/services/llmService';
 import { llmSettingsFileService } from '$lib/server/services/llmSettingsFileService';
 import { llmLogService } from '$lib/server/services/llmLogService';
 import { generateSandboxNarration } from '$lib/server/llm/sandboxNarration';
-import { checkForLocationUpdate } from '$lib/server/services/gameMasterService';
+import { decidePerMessageActions } from '$lib/server/services/gameMasterService';
 import type { Message } from '$lib/server/db/schema';
 import type { WorldLocation } from '$lib/types/sandbox';
 
@@ -90,43 +90,52 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 			senderAvatar: userInfo.avatarData
 		});
 
-		// Dynamic mode: check if location should update every 5 user messages
+		// Dynamic mode: after every user message, ask the GM what scene-level
+		// actions to take (location updates, world state refreshes, ...).
+		let refreshedWorldState: any = undefined;
 		if (session.mode === 'dynamic') {
-			const userMessageCount = await sandboxService.getUserMessageCount(sessionId);
-			if (userMessageCount > 0 && userMessageCount % 5 === 0) {
-				const existingMessages = await sandboxService.getMessages(sessionId);
-				const recentMessages = existingMessages.slice(-10).map(m => ({
-					role: m.role,
-					content: m.content,
-					senderName: m.senderName
-				}));
+			const existingMessages = await sandboxService.getMessages(sessionId);
+			const recentMessages = existingMessages.slice(-10).map((m) => ({
+				role: m.role,
+				content: m.content,
+				senderName: m.senderName
+			}));
 
-				const gmResult = await checkForLocationUpdate(
-					location?.name || 'Unknown Location',
-					location?.description || '',
-					recentMessages,
-					session.dynamicTheme
-				);
+			const actions = await decidePerMessageActions({
+				currentLocationName: location?.name || 'Unknown Location',
+				currentLocationDescription: location?.description || '',
+				recentMessages,
+				worldStateSummary: formatWorldStateSummary(session.worldInfo),
+				theme: session.dynamicTheme
+			});
 
-				if (gmResult.shouldUpdate && gmResult.newLocation) {
+			for (const action of actions) {
+				if (action.type === 'update_location') {
 					await sandboxService.updateDynamicLocation(
 						sessionId, parseInt(userId),
-						gmResult.newLocation.name,
-						gmResult.newLocation.description
+						action.location_name,
+						action.location_description
 					);
 
-					// Add narrator transition message
 					await sandboxService.addMessage(sessionId, parseInt(userId), {
 						role: 'narrator',
-						content: `The scene shifts... You find yourself in **${gmResult.newLocation.name}**. ${gmResult.newLocation.description}`,
+						content: `The scene shifts... You find yourself in **${action.location_name}**. ${action.location_description}`,
 						senderName: 'Narrator'
 					});
 
-					// Update location context for the character response
-					location = { name: gmResult.newLocation.name, description: gmResult.newLocation.description, connections: [] };
-
-					// Re-fetch session for updated state
+					location = { name: action.location_name, description: action.location_description, connections: [] };
 					session = (await sandboxService.getSession(sessionId, parseInt(userId)))!;
+				} else if (action.type === 'refresh_world_state') {
+					try {
+						const fresh = await sandboxService.refreshWorldState(sessionId, parseInt(userId));
+						if (fresh) {
+							refreshedWorldState = fresh;
+							// Re-fetch session so later code sees the new worldInfo
+							session = (await sandboxService.getSession(sessionId, parseInt(userId)))!;
+						}
+					} catch (err) {
+						console.error('GM-driven world state refresh failed:', err);
+					}
 				}
 			}
 		}
@@ -186,7 +195,8 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 			userMessage,
 			assistantMessage,
 			messages,
-			location: currentLocation
+			location: currentLocation,
+			worldState: refreshedWorldState
 		});
 	} catch (error) {
 		console.error('Failed to send message:', error);

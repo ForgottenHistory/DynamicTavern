@@ -76,7 +76,9 @@ description: A vivid 2-3 sentence description of the location, setting the atmos
 }
 
 export type GameMasterAction =
-	| { type: 'generate_image'; reason?: string };
+	| { type: 'generate_image'; reason?: string }
+	| { type: 'update_location'; location_name: string; location_description: string; reason?: string }
+	| { type: 'refresh_world_state'; reason?: string };
 
 /**
  * Parse a YAML action list of the form:
@@ -96,6 +98,15 @@ function parseActionList(text: string): GameMasterAction[] {
 		if (!current) return;
 		if (current.type === 'generate_image') {
 			actions.push({ type: 'generate_image', reason: current.reason });
+		} else if (current.type === 'update_location' && current.location_name && current.location_description) {
+			actions.push({
+				type: 'update_location',
+				location_name: current.location_name,
+				location_description: current.location_description,
+				reason: current.reason
+			});
+		} else if (current.type === 'refresh_world_state') {
+			actions.push({ type: 'refresh_world_state', reason: current.reason });
 		}
 		current = null;
 	};
@@ -126,6 +137,7 @@ export async function decideOnCharacterEntered(params: {
 	locationDescription: string;
 	characterName: string;
 	characterDescription: string;
+	worldStateSummary: string;
 }): Promise<GameMasterAction[]> {
 	const settings = gameMasterSettingsService.getSettings();
 
@@ -142,7 +154,8 @@ actions:
 		.replace(/\{\{location_name\}\}/g, params.locationName || '')
 		.replace(/\{\{location_description\}\}/g, params.locationDescription || '')
 		.replace(/\{\{character_name\}\}/g, params.characterName || '')
-		.replace(/\{\{character_description\}\}/g, params.characterDescription || '');
+		.replace(/\{\{character_description\}\}/g, params.characterDescription || '')
+		.replace(/\{\{world_state\}\}/g, params.worldStateSummary || '(none)');
 
 	try {
 		const result = await callLlm({
@@ -163,43 +176,58 @@ actions:
 }
 
 /**
- * Check if the location should update based on recent conversation
+ * After each user message, ask the GM what actions (if any) to take:
+ *   - update_location: scene should move
+ *   - refresh_world_state: world state looks stale or empty
+ * Returns an action list that the caller dispatches. Never throws.
  */
-export async function checkForLocationUpdate(
-	currentLocationName: string,
-	currentLocationDescription: string,
-	recentMessages: { role: string; content: string; senderName?: string | null }[],
-	theme?: string | null
-): Promise<{ shouldUpdate: boolean; newLocation?: DynamicLocation }> {
+export async function decidePerMessageActions(params: {
+	currentLocationName: string;
+	currentLocationDescription: string;
+	recentMessages: { role: string; content: string; senderName?: string | null }[];
+	worldStateSummary: string; // Human-readable snapshot or "(none)" if empty
+	theme?: string | null;
+}): Promise<GameMasterAction[]> {
 	const settings = gameMasterSettingsService.getSettings();
 
 	const systemPrompt = await loadPrompt(
 		'gameMaster_dynamic_check.txt',
-		`You are the Game Master for a dynamic sandbox roleplay session. Analyze the recent conversation and decide if the location should change based on the narrative.
+		`You are the Game Master for a dynamic sandbox roleplay session. After each user message, decide which actions (if any) to take.
 
 Current location: {{location_name}}
 {{location_description}}
 
-Only suggest a location change if the conversation clearly implies movement or a significant scene transition. Do NOT change location just because time passed or the topic shifted.
+Current world state:
+{{world_state}}
 
-Respond with YAML only:
-action: none or update_location
-reason: brief explanation
-location_name: new location name
-location_description: vivid 2-3 sentence description`
+Possible actions:
+  - update_location: the scene has clearly moved to a new place
+  - refresh_world_state: the tracked attributes (clothes, mood, position, etc.) are empty or no longer match what's happening
+
+Return zero or more actions as YAML:
+
+actions:
+  - type: update_location
+    location_name: new location name
+    location_description: vivid 2-3 sentence description
+    reason: brief explanation
+  - type: refresh_world_state
+    reason: what changed
+
+If nothing needs to change, return:
+actions: []`
 	);
 
-	// Replace template variables in prompt
 	let processedPrompt = systemPrompt
-		.replace(/\{\{location_name\}\}/g, currentLocationName)
-		.replace(/\{\{location_description\}\}/g, currentLocationDescription);
+		.replace(/\{\{location_name\}\}/g, params.currentLocationName)
+		.replace(/\{\{location_description\}\}/g, params.currentLocationDescription)
+		.replace(/\{\{world_state\}\}/g, params.worldStateSummary);
 
-	if (theme) {
-		processedPrompt += `\n\nWorld theme: ${theme}. Any new locations must fit this setting.`;
+	if (params.theme) {
+		processedPrompt += `\n\nWorld theme: ${params.theme}. Any new locations must fit this setting.`;
 	}
 
-	// Format recent messages as conversation context
-	const conversationContext = recentMessages
+	const conversationContext = params.recentMessages
 		.map(m => `${m.senderName || m.role}: ${m.content}`)
 		.join('\n');
 
@@ -207,7 +235,7 @@ location_description: vivid 2-3 sentence description`
 		const result = await callLlm({
 			messages: [
 				{ role: 'system', content: processedPrompt },
-				{ role: 'user', content: `Recent conversation:\n${conversationContext}\n\nShould the location change?` }
+				{ role: 'user', content: `Recent conversation:\n${conversationContext}\n\nWhat should happen now?` }
 			],
 			settings,
 			logType: 'game_master',
@@ -215,20 +243,9 @@ location_description: vivid 2-3 sentence description`
 			timeout: 30000
 		});
 
-		const parsed = parseYaml(result.content);
-		if (parsed.action === 'update_location' && parsed.location_name && parsed.location_description) {
-			return {
-				shouldUpdate: true,
-				newLocation: {
-					name: parsed.location_name,
-					description: parsed.location_description
-				}
-			};
-		}
-
-		return { shouldUpdate: false };
+		return parseActionList(result.content);
 	} catch (error) {
-		console.error('Game Master location check failed:', error);
-		return { shouldUpdate: false };
+		console.error('Game Master per-message decision failed:', error);
+		return [];
 	}
 }

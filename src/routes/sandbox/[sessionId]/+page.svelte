@@ -136,9 +136,16 @@
 						onDelete={sandbox.handleDelete}
 					/>
 
+					{#if sandbox.gmBusy}
+						<div class="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-[var(--accent-primary)]/10 border-t border-[var(--accent-primary)]/30 text-sm text-[var(--accent-primary)]">
+							<div class="animate-spin rounded-full h-3.5 w-3.5 border-2 border-[var(--accent-primary)] border-t-transparent"></div>
+							<span>Game Master is thinking{sandbox.gmReason ? ` — ${sandbox.gmReason}` : '…'}</span>
+						</div>
+					{/if}
+
 					<ChatInput
 						bind:this={chatInputRef}
-						disabled={sandbox.sending || sandbox.generating}
+						disabled={sandbox.sending || sandbox.generating || sandbox.gmBusy}
 						hasAssistantMessages={sandbox.hasAssistantMessages}
 						impersonating={sandbox.impersonating}
 						sceneCharacters={sandbox.sceneCharacters}
@@ -168,7 +175,7 @@
 							<div class="relative">
 								<button
 									onclick={sandbox.openCharacterPicker}
-									disabled={sandbox.characterPickerLoading}
+									disabled={sandbox.characterPickerLoading || sandbox.gmBusy}
 									class="p-1 hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] rounded transition disabled:opacity-50"
 									title="Add character"
 								>
@@ -199,7 +206,7 @@
 												{#each sandbox.availableCharacters as char}
 													<button
 														onclick={() => sandbox.addCharacter(char.id)}
-														disabled={sandbox.characterPickerLoading}
+														disabled={sandbox.characterPickerLoading || sandbox.gmBusy}
 														class="w-full flex items-center gap-3 p-3 hover:bg-[var(--bg-secondary)] transition text-left disabled:opacity-50"
 													>
 														{#if char.thumbnailData || char.imageData}
@@ -251,7 +258,7 @@
 										<div class="flex items-center gap-1">
 											<button
 												onclick={() => sandbox.generate(char.id)}
-												disabled={sandbox.generating}
+												disabled={sandbox.generating || sandbox.gmBusy}
 												class="p-1 text-[var(--text-muted)] hover:text-[var(--accent-primary)] hover:bg-[var(--bg-tertiary)] rounded transition disabled:opacity-50"
 												title="Prompt {char.name}"
 											>
@@ -270,7 +277,7 @@
 											</button>
 											<button
 												onclick={() => sandbox.removeCharacter(char.id)}
-												disabled={sandbox.removingCharacterIds.has(char.id)}
+												disabled={sandbox.removingCharacterIds.has(char.id) || sandbox.gmBusy}
 												class="p-1 opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-red-400 hover:bg-[var(--bg-tertiary)] rounded transition disabled:opacity-30 disabled:cursor-not-allowed"
 												title="Remove {char.name}"
 											>
@@ -303,7 +310,7 @@
 								<div class="flex items-center gap-1">
 								<button
 									onclick={sandbox.clearWorldState}
-									disabled={sandbox.worldStateLoading || !sandbox.worldState}
+									disabled={sandbox.worldStateLoading || !sandbox.worldState || sandbox.gmBusy}
 									class="p-1 hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-red-400 rounded transition disabled:opacity-50"
 									title="Clear world state"
 								>
@@ -313,7 +320,7 @@
 								</button>
 								<button
 									onclick={sandbox.generateWorldState}
-									disabled={sandbox.worldStateLoading}
+									disabled={sandbox.worldStateLoading || sandbox.gmBusy}
 									class="p-1 hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] rounded transition disabled:opacity-50"
 									title="Regenerate world state"
 								>
@@ -506,7 +513,7 @@
 								{#each sandbox.connections as connection}
 									<button
 										onclick={() => sandbox.move(connection.id)}
-										disabled={sandbox.moving}
+										disabled={sandbox.moving || sandbox.gmBusy}
 										class="w-full flex items-center gap-3 p-3 bg-[var(--bg-tertiary)] rounded-lg hover:bg-[var(--accent-primary)]/10 transition text-left disabled:opacity-50"
 									>
 										<svg class="w-5 h-5 text-[var(--accent-primary)] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

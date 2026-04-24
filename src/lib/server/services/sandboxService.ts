@@ -411,6 +411,96 @@ class SandboxService {
 
 		return result?.count || 0;
 	}
+
+	/**
+	 * Regenerate world state for a session using the Content LLM. Returns the
+	 * fresh state (also persisted to DB), or null on failure.
+	 */
+	async refreshWorldState(sessionId: number, userId: number): Promise<any | null> {
+		const { clothesGenerationService } = await import('./clothesGenerationService');
+		const { personaService } = await import('./personaService');
+
+		const session = await this.getSession(sessionId, userId);
+		if (!session) return null;
+
+		const activeCharacters = await this.getActiveCharacters(sessionId);
+		if (activeCharacters.length === 0) return null;
+
+		const userInfo = await personaService.getActiveUserInfo(userId);
+
+		const recent = (await this.getMessages(sessionId)).slice(-10);
+		const chatHistory = recent
+			.map((m) => {
+				const name = m.role === 'user' ? userInfo.name : (m.role === 'assistant' ? (m.senderName || 'Character') : 'Narrator');
+				return `${name}: ${m.content}`;
+			})
+			.join('\n\n');
+
+		let previousState: any = null;
+		if (session.worldInfo) {
+			try {
+				const parsed = JSON.parse(session.worldInfo);
+				previousState = parsed.worldState || parsed;
+			} catch { /* ignore */ }
+		}
+
+		const characterInfos = activeCharacters.map((c) => {
+			let description = c.description || '';
+			if (!description) {
+				try {
+					const cardData = JSON.parse(c.cardData);
+					description = cardData.data?.description || cardData.description || '';
+				} catch { /* ignore */ }
+			}
+			return { name: c.name, description };
+		});
+
+		const worldState = await clothesGenerationService.generateWorldState({
+			characters: characterInfos,
+			scenario: '',
+			userName: userInfo.name,
+			chatHistory,
+			previousState
+		});
+
+		await db
+			.update(sandboxSessions)
+			.set({ worldInfo: JSON.stringify({ worldState }) })
+			.where(eq(sandboxSessions.id, sessionId));
+
+		return worldState;
+	}
+}
+
+/**
+ * Build a compact human-readable summary of a session's world state suitable
+ * for feeding into a GM prompt. Returns "(none)" when the state is empty.
+ */
+export function formatWorldStateSummary(worldInfoRaw: string | null | undefined): string {
+	if (!worldInfoRaw) return '(none)';
+	try {
+		const parsed = JSON.parse(worldInfoRaw);
+		const state = parsed.worldState || parsed;
+		if (!state || typeof state !== 'object' || Object.keys(state).length === 0) return '(none)';
+
+		const lines: string[] = [];
+		for (const [entity, entityState] of Object.entries<any>(state)) {
+			const attrs = Array.isArray(entityState?.attributes) ? entityState.attributes : [];
+			if (attrs.length === 0) continue;
+			lines.push(`${entity}:`);
+			for (const attr of attrs) {
+				if (attr.type === 'list' && Array.isArray(attr.value)) {
+					const items = attr.value.map((v: any) => v?.name).filter(Boolean).join(', ');
+					lines.push(`  ${attr.name}: ${items || '(empty)'}`);
+				} else if (typeof attr.value === 'string') {
+					lines.push(`  ${attr.name}: ${attr.value}`);
+				}
+			}
+		}
+		return lines.length > 0 ? lines.join('\n') : '(none)';
+	} catch {
+		return '(none)';
+	}
 }
 
 export const sandboxService = new SandboxService();

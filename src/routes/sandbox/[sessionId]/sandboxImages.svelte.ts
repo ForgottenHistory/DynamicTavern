@@ -7,15 +7,22 @@ import {
 	onSandboxImageUpdate,
 	offSandboxImageUpdate,
 	onSandboxImageDelete,
-	offSandboxImageDelete
+	offSandboxImageDelete,
+	onSandboxGmStatus,
+	offSandboxGmStatus,
+	onSandboxWorldState,
+	offSandboxWorldState
 } from '$lib/stores/socket';
 
 export interface SandboxImagesContext {
 	sessionId: number;
+	onWorldStateUpdate?: (worldState: any) => void;
 }
 
 export function createSandboxImages(ctx: SandboxImagesContext) {
 	let images = $state<SandboxImageRow[]>([]);
+	let gmBusy = $state(false);
+	let gmReason = $state<string | null>(null);
 	let joined = false;
 
 	async function refresh() {
@@ -49,12 +56,23 @@ export function createSandboxImages(ctx: SandboxImagesContext) {
 		}
 	}
 
+	function handleGmStatus(status: { busy: boolean; reason: string | null }) {
+		gmBusy = status.busy;
+		gmReason = status.reason;
+	}
+
+	function handleWorldState(ws: any) {
+		ctx.onWorldStateUpdate?.(ws);
+	}
+
 	function start() {
 		if (joined) return;
 		initSocket();
 		joinSandbox(ctx.sessionId);
 		onSandboxImageUpdate(handleUpdate);
 		onSandboxImageDelete(handleDelete);
+		onSandboxGmStatus(handleGmStatus);
+		onSandboxWorldState(handleWorldState);
 		joined = true;
 	}
 
@@ -62,6 +80,8 @@ export function createSandboxImages(ctx: SandboxImagesContext) {
 		if (!joined) return;
 		offSandboxImageUpdate();
 		offSandboxImageDelete();
+		offSandboxGmStatus();
+		offSandboxWorldState();
 		leaveSandbox(ctx.sessionId);
 		joined = false;
 	}
@@ -69,6 +89,12 @@ export function createSandboxImages(ctx: SandboxImagesContext) {
 	return {
 		get images() {
 			return images;
+		},
+		get gmBusy() {
+			return gmBusy;
+		},
+		get gmReason() {
+			return gmReason;
 		},
 		refresh,
 		remove,

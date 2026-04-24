@@ -131,3 +131,29 @@ export function emitSandboxImageDelete(sessionId: number, imageId: number) {
 	io.to(`sandbox-${sessionId}`).emit('sandbox-image-delete', imageId);
 	logger.debug(`Emitted sandbox-image-delete to sandbox ${sessionId} (image ${imageId})`);
 }
+
+/**
+ * Emit Game Master busy/idle status to a sandbox room so the client can
+ * lock action buttons while the GM is thinking.
+ */
+export function emitSandboxGmStatus(sessionId: number, busy: boolean, reason?: string) {
+	if (!io && global.__socketio) {
+		io = global.__socketio;
+	}
+	if (!io) return;
+	io.to(`sandbox-${sessionId}`).emit('sandbox-gm-status', { busy, reason: reason ?? null });
+	logger.debug(`Emitted sandbox-gm-status to sandbox ${sessionId} (busy=${busy})`);
+}
+
+/**
+ * Emit a fresh world state snapshot to a sandbox room so the client sidebar
+ * can update without re-fetching.
+ */
+export function emitSandboxWorldState(sessionId: number, worldState: any) {
+	if (!io && global.__socketio) {
+		io = global.__socketio;
+	}
+	if (!io) return;
+	io.to(`sandbox-${sessionId}`).emit('sandbox-world-state', worldState);
+	logger.debug(`Emitted sandbox-world-state to sandbox ${sessionId}`);
+}

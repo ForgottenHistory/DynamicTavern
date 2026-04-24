@@ -3,13 +3,14 @@ import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
 import { characters } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
-import { sandboxService } from '$lib/server/services/sandboxService';
+import { sandboxService, formatWorldStateSummary } from '$lib/server/services/sandboxService';
 import { sandboxParticipantService } from '$lib/server/services/sandboxParticipantService';
 import { worldService } from '$lib/server/services/worldService';
 import { generateSandboxNarration, generateCharacterEntranceDialogue, formatSandboxHistory } from '$lib/server/llm/sandboxNarration';
 import { personaService } from '$lib/server/services/personaService';
 import { decideOnCharacterEntered } from '$lib/server/services/gameMasterService';
 import { sandboxImageService } from '$lib/server/services/sandboxImageService';
+import { emitSandboxGmStatus, emitSandboxWorldState } from '$lib/server/socket';
 
 // GET - List all user's characters (for the picker), filtering out already-present ones
 export const GET: RequestHandler = async ({ params, cookies }) => {
@@ -94,9 +95,23 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 		// Also set as currentCharacterId (legacy field)
 		await sandboxService.setCurrentCharacter(sessionId, parseInt(userId), characterId);
 
-		// Get location info for narration
-		const world = await worldService.get(session.worldFile);
-		const location = world ? worldService.getLocation(world, session.currentLocationId) : null;
+		// Get location info for narration. Dynamic sessions have no world file —
+		// the location lives on the session itself.
+		let location: { name: string; description: string } | null = null;
+		if (session.mode === 'dynamic') {
+			if (session.dynamicLocationName) {
+				location = {
+					name: session.dynamicLocationName,
+					description: session.dynamicLocationDescription || ''
+				};
+			}
+		} else {
+			const world = await worldService.get(session.worldFile);
+			if (world) {
+				const loc = worldService.getLocation(world, session.currentLocationId);
+				if (loc) location = { name: loc.name, description: loc.description };
+			}
+		}
 
 		// Generate character-spoken entrance beat (replaces the old narrator message)
 		const userInfo = await personaService.getActiveUserInfo(parseInt(userId));
@@ -130,13 +145,15 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 
 		// Ask the GM which (if any) scene-level actions to take for this entrance.
 		// Fire-and-forget — we don't want to block the response on image generation.
+		emitSandboxGmStatus(sessionId, true, 'Deciding on entrance beats');
 		(async () => {
 			try {
 				const actions = await decideOnCharacterEntered({
 					locationName: location?.name || session.currentLocationId,
 					locationDescription: location?.description || '',
 					characterName: character.name,
-					characterDescription: character.description || ''
+					characterDescription: character.description || '',
+					worldStateSummary: formatWorldStateSummary(session.worldInfo)
 				});
 
 				for (const action of actions) {
@@ -156,10 +173,21 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 								characterId: character.id
 							})
 							.catch((err) => console.error('Background image generation failed:', err));
+					} else if (action.type === 'refresh_world_state') {
+						try {
+							const fresh = await sandboxService.refreshWorldState(sessionId, parseInt(userId));
+							if (fresh) {
+								emitSandboxWorldState(sessionId, fresh);
+							}
+						} catch (err) {
+							console.error('GM-driven world state refresh failed:', err);
+						}
 					}
 				}
 			} catch (err) {
 				console.error('GM character-entry hook failed:', err);
+			} finally {
+				emitSandboxGmStatus(sessionId, false);
 			}
 		})();
 
@@ -215,8 +243,21 @@ export const DELETE: RequestHandler = async ({ params, cookies, request }) => {
 
 		// Generate narrator departure message
 		if (character) {
-			const world = await worldService.get(session.worldFile);
-			const location = world ? worldService.getLocation(world, session.currentLocationId) : null;
+			let location: { name: string; description: string } | null = null;
+			if (session.mode === 'dynamic') {
+				if (session.dynamicLocationName) {
+					location = {
+						name: session.dynamicLocationName,
+						description: session.dynamicLocationDescription || ''
+					};
+				}
+			} else {
+				const world = await worldService.get(session.worldFile);
+				if (world) {
+					const loc = worldService.getLocation(world, session.currentLocationId);
+					if (loc) location = { name: loc.name, description: loc.description };
+				}
+			}
 			const userInfo = await personaService.getActiveUserInfo(parseInt(userId));
 			const existingMessages = await sandboxService.getMessages(sessionId);
 

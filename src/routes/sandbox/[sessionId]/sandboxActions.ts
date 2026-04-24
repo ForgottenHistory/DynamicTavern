@@ -55,7 +55,7 @@ export async function moveToLocation(sessionId: number, locationId: string, foll
 	return response.json();
 }
 
-export async function sendMessage(sessionId: number, content: string): Promise<{ messages: Message[]; location?: WorldLocation }> {
+export async function sendMessage(sessionId: number, content: string): Promise<{ messages: Message[]; location?: WorldLocation; worldState?: WorldStateData }> {
 	const response = await fetch(`/api/sandbox/sessions/${sessionId}/messages`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },

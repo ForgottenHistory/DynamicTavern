@@ -66,7 +66,8 @@ export function createSandboxState(options: SandboxStateOptions) {
 	});
 
 	const imagesModule = createSandboxImages({
-		sessionId: options.sessionId
+		sessionId: options.sessionId,
+		onWorldStateUpdate: (ws) => worldStateModule.set(ws)
 	});
 
 	const charactersModule = createCharacters({
@@ -204,6 +205,10 @@ export function createSandboxState(options: SandboxStateOptions) {
 			// Update location if the server returned one (dynamic mode GM may have changed it)
 			if (result.location) {
 				location = result.location;
+			}
+			// If the GM refreshed world state, mirror it into the sidebar without re-fetching.
+			if (result.worldState) {
+				worldStateModule.set(result.worldState);
 			}
 			options.onScrollToBottom();
 		} catch (e) {
@@ -376,6 +381,8 @@ export function createSandboxState(options: SandboxStateOptions) {
 
 		// Images (delegated)
 		get images() { return imagesModule.images; },
+		get gmBusy() { return imagesModule.gmBusy; },
+		get gmReason() { return imagesModule.gmReason; },
 		refreshImages: imagesModule.refresh,
 		removeImage: imagesModule.remove,
 		disposeImages: imagesModule.dispose,

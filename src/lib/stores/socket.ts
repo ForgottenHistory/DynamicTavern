@@ -116,6 +116,38 @@ export function offSandboxImageDelete() {
 }
 
 /**
+ * Listen for sandbox GM busy/idle status
+ */
+export function onSandboxGmStatus(callback: (status: { busy: boolean; reason: string | null }) => void) {
+	if (!socket) return;
+	socket.on('sandbox-gm-status', callback);
+}
+
+/**
+ * Stop listening for sandbox GM status
+ */
+export function offSandboxGmStatus() {
+	if (!socket) return;
+	socket.off('sandbox-gm-status');
+}
+
+/**
+ * Listen for sandbox world state updates
+ */
+export function onSandboxWorldState(callback: (worldState: any) => void) {
+	if (!socket) return;
+	socket.on('sandbox-world-state', callback);
+}
+
+/**
+ * Stop listening for sandbox world state updates
+ */
+export function offSandboxWorldState() {
+	if (!socket) return;
+	socket.off('sandbox-world-state');
+}
+
+/**
  * Remove all listeners
  */
 export function removeAllListeners() {
