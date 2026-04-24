@@ -75,6 +75,93 @@ description: A vivid 2-3 sentence description of the location, setting the atmos
 	};
 }
 
+export type GameMasterAction =
+	| { type: 'generate_image'; reason?: string };
+
+/**
+ * Parse a YAML action list of the form:
+ *   actions:
+ *     - type: generate_image
+ *       reason: ...
+ * Tolerant of missing fences and extra whitespace.
+ */
+function parseActionList(text: string): GameMasterAction[] {
+	const cleaned = text.replace(/```ya?ml\n?|\n?```/g, '').trim();
+	const lines = cleaned.split('\n');
+
+	const actions: GameMasterAction[] = [];
+	let current: Record<string, string> | null = null;
+
+	const flush = () => {
+		if (!current) return;
+		if (current.type === 'generate_image') {
+			actions.push({ type: 'generate_image', reason: current.reason });
+		}
+		current = null;
+	};
+
+	for (const rawLine of lines) {
+		const line = rawLine.replace(/\t/g, '  ');
+		const itemMatch = line.match(/^\s*-\s*type:\s*(\S+)\s*$/);
+		if (itemMatch) {
+			flush();
+			current = { type: itemMatch[1] };
+			continue;
+		}
+		const kvMatch = line.match(/^\s{2,}(\w+):\s*(.+)$/);
+		if (kvMatch && current) {
+			current[kvMatch[1]] = kvMatch[2].trim();
+		}
+	}
+	flush();
+	return actions;
+}
+
+/**
+ * Decide which actions to take when a character enters the scene.
+ * Returns an (often empty) list of actions. Never throws.
+ */
+export async function decideOnCharacterEntered(params: {
+	locationName: string;
+	locationDescription: string;
+	characterName: string;
+	characterDescription: string;
+}): Promise<GameMasterAction[]> {
+	const settings = gameMasterSettingsService.getSettings();
+
+	const systemPrompt = await loadPrompt(
+		'gameMaster_character_entered.txt',
+		`You are the Game Master. A character has entered the scene. Respond with a YAML actions list.
+
+actions:
+  - type: generate_image
+    reason: short reason`
+	);
+
+	const processedPrompt = systemPrompt
+		.replace(/\{\{location_name\}\}/g, params.locationName || '')
+		.replace(/\{\{location_description\}\}/g, params.locationDescription || '')
+		.replace(/\{\{character_name\}\}/g, params.characterName || '')
+		.replace(/\{\{character_description\}\}/g, params.characterDescription || '');
+
+	try {
+		const result = await callLlm({
+			messages: [
+				{ role: 'system', content: processedPrompt },
+				{ role: 'user', content: 'Decide actions for this entrance.' }
+			],
+			settings,
+			logType: 'game_master',
+			logCharacterName: 'Game Master',
+			timeout: 30000
+		});
+		return parseActionList(result.content);
+	} catch (error) {
+		console.error('Game Master character-entry decision failed:', error);
+		return [];
+	}
+}
+
 /**
  * Check if the location should update based on recent conversation
  */

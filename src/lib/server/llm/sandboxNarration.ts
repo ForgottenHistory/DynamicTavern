@@ -287,3 +287,128 @@ export async function generateSandboxNarration(
 		reasoning: response.reasoning || null
 	};
 }
+
+export interface CharacterEntranceOptions {
+	userId: number;
+	locationName: string;
+	locationDescription: string;
+	userName: string;
+	userDescription?: string;
+	character: {
+		name: string;
+		description: string;
+	};
+	history?: string;
+}
+
+const DEFAULT_CHARACTER_ENTRANCE_PROMPT = `You are {{character_name}}, entering a scene.
+
+Location: {{location_name}}
+{{location_description}}
+
+{{character_name}}:
+{{character_description}}
+
+{{user}} is already present in this location.
+{{#if user_description}}
+{{user_description}}
+{{/if}}
+
+{{#if history}}
+Recent events:
+{{history}}
+{{/if}}
+
+Write {{character_name}}'s entrance as a single first-person beat. Describe how they arrive (actions, appearance, body language) in italics using *asterisks*, and give them one short opening line of dialogue. Keep it to 2-4 sentences. Stay in character. Do NOT describe {{user}}'s reaction or dialogue.`;
+
+/**
+ * Load the character-entrance prompt template from disk, falling back to default.
+ */
+async function loadCharacterEntrancePrompt(): Promise<string> {
+	try {
+		const filePath = path.join(PROMPTS_DIR, 'sandbox_character_entrance_dialogue.txt');
+		return await fs.readFile(filePath, 'utf-8');
+	} catch {
+		return DEFAULT_CHARACTER_ENTRANCE_PROMPT;
+	}
+}
+
+/**
+ * Generate a first-person entrance beat (action + opening line) spoken by the
+ * entering character, replacing the old narrator entrance message.
+ */
+export async function generateCharacterEntranceDialogue(
+	options: CharacterEntranceOptions
+): Promise<ChatCompletionResult> {
+	const { userId, locationName, locationDescription, userName, userDescription, character, history } = options;
+
+	const settings = contentLlmSettingsService.getSettings();
+	const basePrompt = await loadCharacterEntrancePrompt();
+
+	const variables: Record<string, any> = {
+		location_name: locationName,
+		location_description: locationDescription,
+		user: userName,
+		user_description: userDescription || '',
+		character_name: character.name,
+		character_description: character.description,
+		history: history || ''
+	};
+
+	let prompt = processConditionals(basePrompt, variables);
+	prompt = prompt
+		.replace(/\{\{location_name\}\}/g, locationName)
+		.replace(/\{\{location_description\}\}/g, locationDescription)
+		.replace(/\{\{user\}\}/g, userName)
+		.replace(/\{\{user_description\}\}/g, userDescription || '')
+		.replace(/\{\{character_name\}\}/g, character.name)
+		.replace(/\{\{character_description\}\}/g, character.description)
+		.replace(/\{\{history\}\}/g, history || '');
+
+	const formattedMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+		{ role: 'system', content: prompt.trim() },
+		{ role: 'user', content: `Write ${character.name}'s entrance.` }
+	];
+
+	const logId = llmLogService.savePromptLog(
+		formattedMessages,
+		'sandbox_character_entrance',
+		character.name,
+		userName
+	);
+
+	logger.info(`Generating character entrance dialogue`, {
+		character: character.name,
+		location: locationName,
+		model: settings.model
+	});
+
+	const response = await llmService.createChatCompletion({
+		messages: formattedMessages,
+		userId,
+		model: settings.model,
+		temperature: settings.temperature,
+		maxTokens: settings.maxTokens
+	});
+
+	logger.success(`Generated character entrance dialogue`, {
+		character: character.name,
+		location: locationName,
+		model: response.model,
+		contentLength: response.content.length,
+		tokensUsed: response.usage?.total_tokens
+	});
+
+	llmLogService.saveResponseLog(
+		response.content,
+		response.content,
+		'sandbox_character_entrance',
+		logId,
+		response
+	);
+
+	return {
+		content: response.content,
+		reasoning: response.reasoning || null
+	};
+}

@@ -3,11 +3,14 @@
 	import MainLayout from '$lib/components/MainLayout.svelte';
 	import ChatMessages from '$lib/components/chat/ChatMessages.svelte';
 	import ChatInput from '$lib/components/chat/ChatInput.svelte';
+	import SandboxImageSidebar from '$lib/components/sandbox/SandboxImageSidebar.svelte';
 	import { slide } from 'svelte/transition';
 	import { onMount } from 'svelte';
 	import { createSandboxState } from './sandboxState.svelte';
 
 	let { data }: { data: PageData } = $props();
+
+	let fullscreen = $state(false);
 
 	// Component references for bind:this - these don't need $state
 	// svelte-ignore non_reactive_update
@@ -15,7 +18,7 @@
 	// svelte-ignore non_reactive_update
 	let chatInputRef: ChatInput | undefined;
 
-	const state = createSandboxState({
+	const sandbox = createSandboxState({
 		sessionId: data.sessionId,
 		userId: data.user.id,
 		userDisplayName: data.user.displayName,
@@ -30,26 +33,27 @@
 	});
 
 	onMount(() => {
-		state.init();
+		sandbox.init();
+		return () => sandbox.disposeImages();
 	});
 </script>
 
 <svelte:head>
-	<title>{state.world?.name || 'Sandbox'} | DynamicTavern</title>
+	<title>{sandbox.world?.name || 'Sandbox'} | DynamicTavern</title>
 </svelte:head>
 
-<MainLayout user={data.user} currentPath="/sandbox">
+<MainLayout user={data.user} currentPath="/sandbox" {fullscreen}>
 	<div class="h-full flex flex-col bg-[var(--bg-primary)]">
-		{#if state.loading}
+		{#if sandbox.loading}
 			<div class="flex-1 flex items-center justify-center">
 				<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent-primary)]"></div>
 			</div>
-		{:else if state.error}
+		{:else if sandbox.error}
 			<div class="flex-1 flex items-center justify-center">
 				<div class="text-center">
-					<p class="text-red-500 mb-4">{state.error}</p>
+					<p class="text-red-500 mb-4">{sandbox.error}</p>
 					<button
-						onclick={state.loadSession}
+						onclick={sandbox.loadSession}
 						class="px-4 py-2 bg-[var(--accent-primary)] text-white rounded-lg hover:opacity-90 transition"
 					>
 						Retry
@@ -71,61 +75,80 @@
 							</svg>
 						</a>
 						<div>
-							<h1 class="text-lg font-semibold text-[var(--text-primary)]">{state.mode === 'dynamic' ? 'Dynamic Adventure' : state.world?.name}</h1>
-							<p class="text-sm text-[var(--text-muted)]">{state.location?.name}</p>
+							<h1 class="text-lg font-semibold text-[var(--text-primary)]">{sandbox.mode === 'dynamic' ? 'Dynamic Adventure' : sandbox.world?.name}</h1>
+							<p class="text-sm text-[var(--text-muted)]">{sandbox.location?.name}</p>
 						</div>
 					</div>
-					<button
-						onclick={state.endSession}
-						class="p-2 text-[var(--text-muted)] hover:text-red-500 hover:bg-[var(--bg-tertiary)] rounded-lg transition"
-						title="End session"
-					>
-						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-						</svg>
-					</button>
+					<div class="flex items-center gap-1">
+						<button
+							onclick={() => (fullscreen = !fullscreen)}
+							class="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition"
+							title={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+						>
+							{#if fullscreen}
+								<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"/>
+								</svg>
+							{:else}
+								<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"/>
+								</svg>
+							{/if}
+						</button>
+						<button
+							onclick={sandbox.endSession}
+							class="p-2 text-[var(--text-muted)] hover:text-red-500 hover:bg-[var(--bg-tertiary)] rounded-lg transition"
+							title="End session"
+						>
+							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+							</svg>
+						</button>
+					</div>
 				</div>
 			</div>
 
 			<!-- Main Content -->
 			<div class="flex-1 flex min-h-0">
+				<SandboxImageSidebar images={sandbox.images} onDelete={sandbox.removeImage} />
+
 				<!-- Chat Area -->
 				<div class="flex-1 flex flex-col min-h-0">
 					<!-- Messages -->
 					<ChatMessages
 						bind:this={chatMessagesRef}
-						messages={state.messages}
+						messages={sandbox.messages}
 						loading={false}
-						isTyping={state.sending}
-						generating={state.generating}
-						charName={state.primaryCharacter?.name}
-						userName={state.userName || data.user.displayName}
-						charAvatar={state.primaryCharacter?.thumbnailData || state.primaryCharacter?.imageData}
-						userAvatar={state.userAvatar}
-						chatLayout={state.chatLayout}
-						avatarStyle={state.avatarStyle}
-						textCleanupEnabled={state.textCleanupEnabled}
-						autoWrapActions={state.autoWrapActions}
-						userBubbleColor={state.userBubbleColor}
-						sceneCharacters={state.sceneCharacters}
-						onSwipe={state.handleSwipe}
-						onSaveEdit={state.handleSaveEdit}
-						onDelete={state.handleDelete}
+						isTyping={sandbox.sending}
+						generating={sandbox.generating}
+						charName={sandbox.primaryCharacter?.name}
+						userName={sandbox.userName || data.user.displayName}
+						charAvatar={sandbox.primaryCharacter?.thumbnailData || sandbox.primaryCharacter?.imageData}
+						userAvatar={sandbox.userAvatar}
+						chatLayout={sandbox.chatLayout}
+						avatarStyle={sandbox.avatarStyle}
+						textCleanupEnabled={sandbox.textCleanupEnabled}
+						autoWrapActions={sandbox.autoWrapActions}
+						userBubbleColor={sandbox.userBubbleColor}
+						sceneCharacters={sandbox.sceneCharacters}
+						onSwipe={sandbox.handleSwipe}
+						onSaveEdit={sandbox.handleSaveEdit}
+						onDelete={sandbox.handleDelete}
 					/>
 
 					<ChatInput
 						bind:this={chatInputRef}
-						disabled={state.sending || state.generating}
-						hasAssistantMessages={state.hasAssistantMessages}
-						impersonating={state.impersonating}
-						sceneCharacters={state.sceneCharacters}
-						onSend={state.sendMessage}
-						onGenerate={state.hasCharacters ? state.generate : undefined}
-						onRegenerate={state.handleRegenerate}
-						onImpersonate={state.hasCharacters ? state.handleImpersonate : undefined}
-						onSceneAction={state.handleSceneAction}
+						disabled={sandbox.sending || sandbox.generating}
+						hasAssistantMessages={sandbox.hasAssistantMessages}
+						impersonating={sandbox.impersonating}
+						sceneCharacters={sandbox.sceneCharacters}
+						onSend={sandbox.sendMessage}
+						onGenerate={sandbox.hasCharacters ? sandbox.generate : undefined}
+						onRegenerate={sandbox.handleRegenerate}
+						onImpersonate={sandbox.hasCharacters ? sandbox.handleImpersonate : undefined}
+						onSceneAction={sandbox.handleSceneAction}
 						onSandboxAction={(type) => {
-							if (type === 'wait') state.handleWait();
+							if (type === 'wait') sandbox.handleWait();
 						}}
 					/>
 				</div>
@@ -134,8 +157,8 @@
 				<div class="w-80 flex-shrink-0 border-l border-[var(--border-primary)] bg-[var(--bg-secondary)] overflow-y-auto">
 					<!-- Location Info -->
 					<div class="p-4 border-b border-[var(--border-primary)]">
-						<h2 class="text-lg font-semibold text-[var(--text-primary)] mb-2">{state.location?.name}</h2>
-						<p class="text-sm text-[var(--text-muted)]">{state.location?.description}</p>
+						<h2 class="text-lg font-semibold text-[var(--text-primary)] mb-2">{sandbox.location?.name}</h2>
+						<p class="text-sm text-[var(--text-muted)]">{sandbox.location?.description}</p>
 					</div>
 
 					<!-- Characters Present -->
@@ -144,8 +167,8 @@
 							<h3 class="text-sm font-medium text-[var(--text-secondary)]">Present</h3>
 							<div class="relative">
 								<button
-									onclick={state.openCharacterPicker}
-									disabled={state.characterPickerLoading}
+									onclick={sandbox.openCharacterPicker}
+									disabled={sandbox.characterPickerLoading}
 									class="p-1 hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] rounded transition disabled:opacity-50"
 									title="Add character"
 								>
@@ -154,29 +177,29 @@
 									</svg>
 								</button>
 
-								{#if state.showCharacterPicker}
+								{#if sandbox.showCharacterPicker}
 									<!-- Backdrop to close picker -->
 									<!-- svelte-ignore a11y_no_static_element_interactions -->
 									<div
 										class="fixed inset-0 z-40"
-										onclick={state.closeCharacterPicker}
-										onkeydown={(e) => { if (e.key === 'Escape') state.closeCharacterPicker(); }}
+										onclick={sandbox.closeCharacterPicker}
+										onkeydown={(e) => { if (e.key === 'Escape') sandbox.closeCharacterPicker(); }}
 									></div>
 
 									<!-- Character picker dropdown -->
 									<div class="absolute right-0 top-full mt-1 w-64 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-50 overflow-hidden">
-										{#if state.characterPickerLoading && state.availableCharacters.length === 0}
+										{#if sandbox.characterPickerLoading && sandbox.availableCharacters.length === 0}
 											<div class="flex items-center justify-center py-4">
 												<div class="animate-spin rounded-full h-5 w-5 border-2 border-[var(--accent-primary)] border-t-transparent"></div>
 											</div>
-										{:else if state.availableCharacters.length === 0}
+										{:else if sandbox.availableCharacters.length === 0}
 											<div class="p-3 text-center text-sm text-[var(--text-muted)]">No characters available</div>
 										{:else}
 											<div class="max-h-64 overflow-y-auto">
-												{#each state.availableCharacters as char}
+												{#each sandbox.availableCharacters as char}
 													<button
-														onclick={() => state.addCharacter(char.id)}
-														disabled={state.characterPickerLoading}
+														onclick={() => sandbox.addCharacter(char.id)}
+														disabled={sandbox.characterPickerLoading}
 														class="w-full flex items-center gap-3 p-3 hover:bg-[var(--bg-secondary)] transition text-left disabled:opacity-50"
 													>
 														{#if char.thumbnailData || char.imageData}
@@ -202,9 +225,9 @@
 							</div>
 						</div>
 
-						{#if state.hasCharacters}
+						{#if sandbox.hasCharacters}
 							<div class="space-y-2">
-								{#each state.characters as char}
+								{#each sandbox.characters as char}
 									<div class="group flex items-center gap-3">
 										{#if char.thumbnailData || char.imageData}
 											<img
@@ -227,8 +250,8 @@
 										</div>
 										<div class="flex items-center gap-1">
 											<button
-												onclick={() => state.generate(char.id)}
-												disabled={state.generating}
+												onclick={() => sandbox.generate(char.id)}
+												disabled={sandbox.generating}
 												class="p-1 text-[var(--text-muted)] hover:text-[var(--accent-primary)] hover:bg-[var(--bg-tertiary)] rounded transition disabled:opacity-50"
 												title="Prompt {char.name}"
 											>
@@ -237,17 +260,17 @@
 												</svg>
 											</button>
 											<button
-												onclick={() => state.toggleFollow(char.id)}
-												class="p-1 {state.followingCharacterIds.has(char.id) ? 'text-[var(--accent-primary)]' : 'opacity-0 group-hover:opacity-100 text-[var(--text-muted)]'} hover:text-[var(--accent-primary)] hover:bg-[var(--bg-tertiary)] rounded transition"
-												title="{state.followingCharacterIds.has(char.id) ? 'Stop following' : 'Follow'} {char.name}"
+												onclick={() => sandbox.toggleFollow(char.id)}
+												class="p-1 {sandbox.followingCharacterIds.has(char.id) ? 'text-[var(--accent-primary)]' : 'opacity-0 group-hover:opacity-100 text-[var(--text-muted)]'} hover:text-[var(--accent-primary)] hover:bg-[var(--bg-tertiary)] rounded transition"
+												title="{sandbox.followingCharacterIds.has(char.id) ? 'Stop following' : 'Follow'} {char.name}"
 											>
 												<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
 												</svg>
 											</button>
 											<button
-												onclick={() => state.removeCharacter(char.id)}
-												disabled={state.removingCharacterIds.has(char.id)}
+												onclick={() => sandbox.removeCharacter(char.id)}
+												disabled={sandbox.removingCharacterIds.has(char.id)}
 												class="p-1 opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-red-400 hover:bg-[var(--bg-tertiary)] rounded transition disabled:opacity-30 disabled:cursor-not-allowed"
 												title="Remove {char.name}"
 											>
@@ -265,22 +288,22 @@
 					</div>
 
 					<!-- World State -->
-					{#if state.worldSidebarEnabled}
+					{#if sandbox.worldSidebarEnabled}
 						<div class="border-b border-[var(--border-primary)]">
 							<div class="flex items-center justify-between p-4">
 								<button
-									onclick={() => state.worldExpanded = !state.worldExpanded}
+									onclick={() => sandbox.worldExpanded = !sandbox.worldExpanded}
 									class="flex-1 flex items-center gap-2 text-left"
 								>
 									<h3 class="text-sm font-medium text-[var(--text-secondary)]">World State</h3>
-									<svg class="w-4 h-4 text-[var(--text-muted)] transition-transform duration-200 {state.worldExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<svg class="w-4 h-4 text-[var(--text-muted)] transition-transform duration-200 {sandbox.worldExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
 									</svg>
 								</button>
 								<div class="flex items-center gap-1">
 								<button
-									onclick={state.clearWorldState}
-									disabled={state.worldStateLoading || !state.worldState}
+									onclick={sandbox.clearWorldState}
+									disabled={sandbox.worldStateLoading || !sandbox.worldState}
 									class="p-1 hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-red-400 rounded transition disabled:opacity-50"
 									title="Clear world state"
 								>
@@ -289,54 +312,54 @@
 									</svg>
 								</button>
 								<button
-									onclick={state.generateWorldState}
-									disabled={state.worldStateLoading}
+									onclick={sandbox.generateWorldState}
+									disabled={sandbox.worldStateLoading}
 									class="p-1 hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] rounded transition disabled:opacity-50"
 									title="Regenerate world state"
 								>
-									<svg class="w-3.5 h-3.5 {state.worldStateLoading ? 'animate-spin' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<svg class="w-3.5 h-3.5 {sandbox.worldStateLoading ? 'animate-spin' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
 									</svg>
 								</button>
 							</div>
 							</div>
 
-							{#if state.worldExpanded}
-								<div class="{state.worldStateLoading ? 'opacity-60' : ''}" transition:slide={{ duration: 200 }}>
-									{#if state.worldState && Object.keys(state.worldState).length > 0}
-										{#each Object.entries(state.worldState) as [entityKey, entity]}
+							{#if sandbox.worldExpanded}
+								<div class="{sandbox.worldStateLoading ? 'opacity-60' : ''}" transition:slide={{ duration: 200 }}>
+									{#if sandbox.worldState && Object.keys(sandbox.worldState).length > 0}
+										{#each Object.entries(sandbox.worldState) as [entityKey, entity]}
 											{#if entity.attributes.some(a => (a.type === 'text' && typeof a.value === 'string' && a.value.trim()) || (a.type === 'list' && Array.isArray(a.value) && a.value.length > 0))}
 												<!-- Entity Header -->
 												<button
-													onclick={() => state.toggleWorldSection(entityKey)}
+													onclick={() => sandbox.toggleWorldSection(entityKey)}
 													class="w-full flex items-center justify-between px-4 py-2 hover:bg-[var(--bg-tertiary)] transition"
 												>
-													<span class="text-sm font-medium text-[var(--accent-secondary)]">{state.getEntityLabel(entityKey)}</span>
-													<svg class="w-3.5 h-3.5 text-[var(--text-muted)] transition-transform duration-200 {state.expandedWorldSections.has(entityKey) ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<span class="text-sm font-medium text-[var(--accent-secondary)]">{sandbox.getEntityLabel(entityKey)}</span>
+													<svg class="w-3.5 h-3.5 text-[var(--text-muted)] transition-transform duration-200 {sandbox.expandedWorldSections.has(entityKey) ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
 													</svg>
 												</button>
 
-												{#if state.expandedWorldSections.has(entityKey)}
+												{#if sandbox.expandedWorldSections.has(entityKey)}
 													<div class="pb-2" transition:slide={{ duration: 150 }}>
 														{#each entity.attributes as attr}
-															{@const icon = state.getAttributeIcon(attr.name)}
+															{@const icon = sandbox.getAttributeIcon(attr.name)}
 															{@const itemKey = `${entityKey}-${attr.name}`}
 
 															{#if attr.type === 'text' && typeof attr.value === 'string' && attr.value.trim()}
-																{#if state.editingWorldKey === itemKey}
+																{#if sandbox.editingWorldKey === itemKey}
 																	<!-- Editing text attribute -->
 																	<div class="px-4 py-1.5">
 																		<span class="text-xs text-[var(--text-muted)] uppercase tracking-wide">{attr.name.charAt(0).toUpperCase() + attr.name.slice(1)}</span>
 																		<input
 																			type="text"
-																			bind:value={state.editingWorldValue}
-																			onkeydown={(e) => { if (e.key === 'Enter') state.saveTextEdit(entityKey, attr.name); if (e.key === 'Escape') state.cancelEdit(); }}
+																			bind:value={sandbox.editingWorldValue}
+																			onkeydown={(e) => { if (e.key === 'Enter') sandbox.saveTextEdit(entityKey, attr.name); if (e.key === 'Escape') sandbox.cancelEdit(); }}
 																			class="w-full mt-1 px-2 py-1 text-sm bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:border-[var(--accent-primary)]"
 																		/>
 																		<div class="flex gap-1 mt-1">
-																			<button onclick={() => state.saveTextEdit(entityKey, attr.name)} class="px-2 py-0.5 text-xs bg-[var(--accent-primary)] text-white rounded hover:opacity-90 transition">Save</button>
-																			<button onclick={state.cancelEdit} class="px-2 py-0.5 text-xs bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded hover:text-[var(--text-primary)] transition">Cancel</button>
+																			<button onclick={() => sandbox.saveTextEdit(entityKey, attr.name)} class="px-2 py-0.5 text-xs bg-[var(--accent-primary)] text-white rounded hover:opacity-90 transition">Save</button>
+																			<button onclick={sandbox.cancelEdit} class="px-2 py-0.5 text-xs bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded hover:text-[var(--text-primary)] transition">Cancel</button>
 																		</div>
 																	</div>
 																{:else}
@@ -352,7 +375,7 @@
 																			<p class="text-sm text-[var(--text-secondary)]">{attr.value}</p>
 																		</div>
 																		<button
-																			onclick={() => state.startEditText(entityKey, attr.name, String(attr.value))}
+																			onclick={() => sandbox.startEditText(entityKey, attr.name, String(attr.value))}
 																			class="p-1 opacity-0 group-hover:opacity-100 hover:bg-[var(--border-primary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] rounded transition"
 																			title="Edit {attr.name}"
 																		>
@@ -376,43 +399,43 @@
 																</div>
 																{#each attr.value as item, itemIdx}
 																	{@const listItemKey = `${itemKey}-${itemIdx}`}
-																	{#if state.editingListItem?.entityKey === entityKey && state.editingListItem?.attrName === attr.name && state.editingListItem?.itemIdx === itemIdx}
+																	{#if sandbox.editingListItem?.entityKey === entityKey && sandbox.editingListItem?.attrName === attr.name && sandbox.editingListItem?.itemIdx === itemIdx}
 																		<!-- Editing list item -->
 																		<div class="px-4 py-1.5">
 																			<input
 																				type="text"
-																				bind:value={state.editingItemName}
-																				onkeydown={(e) => { if (e.key === 'Enter') state.saveListItemEdit(); if (e.key === 'Escape') state.cancelEdit(); }}
+																				bind:value={sandbox.editingItemName}
+																				onkeydown={(e) => { if (e.key === 'Enter') sandbox.saveListItemEdit(); if (e.key === 'Escape') sandbox.cancelEdit(); }}
 																				placeholder="Name"
 																				class="w-full px-2 py-1 text-sm bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:border-[var(--accent-primary)]"
 																			/>
 																			<input
 																				type="text"
-																				bind:value={state.editingItemDescription}
-																				onkeydown={(e) => { if (e.key === 'Enter') state.saveListItemEdit(); if (e.key === 'Escape') state.cancelEdit(); }}
+																				bind:value={sandbox.editingItemDescription}
+																				onkeydown={(e) => { if (e.key === 'Enter') sandbox.saveListItemEdit(); if (e.key === 'Escape') sandbox.cancelEdit(); }}
 																				placeholder="Description"
 																				class="w-full mt-1 px-2 py-1 text-xs bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:border-[var(--accent-primary)]"
 																			/>
 																			<div class="flex gap-1 mt-1">
-																				<button onclick={state.saveListItemEdit} class="px-2 py-0.5 text-xs bg-[var(--accent-primary)] text-white rounded hover:opacity-90 transition">Save</button>
-																				<button onclick={state.cancelEdit} class="px-2 py-0.5 text-xs bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded hover:text-[var(--text-primary)] transition">Cancel</button>
+																				<button onclick={sandbox.saveListItemEdit} class="px-2 py-0.5 text-xs bg-[var(--accent-primary)] text-white rounded hover:opacity-90 transition">Save</button>
+																				<button onclick={sandbox.cancelEdit} class="px-2 py-0.5 text-xs bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded hover:text-[var(--text-primary)] transition">Cancel</button>
 																			</div>
 																		</div>
 																	{:else}
 																		<!-- Display list item -->
 																		<div class="group flex items-center px-4 py-1 hover:bg-[var(--bg-tertiary)] transition">
 																			<button
-																				onclick={() => state.toggleWorldItem(listItemKey)}
+																				onclick={() => sandbox.toggleWorldItem(listItemKey)}
 																				class="flex-1 text-left flex items-center gap-1.5"
 																			>
-																				<svg class="w-3 h-3 text-[var(--text-muted)] transition-transform duration-200 flex-shrink-0 {state.expandedWorldItems.has(listItemKey) ? 'rotate-90' : ''}" fill="currentColor" viewBox="0 0 20 20">
+																				<svg class="w-3 h-3 text-[var(--text-muted)] transition-transform duration-200 flex-shrink-0 {sandbox.expandedWorldItems.has(listItemKey) ? 'rotate-90' : ''}" fill="currentColor" viewBox="0 0 20 20">
 																					<path d="M6 6L14 10L6 14V6Z"/>
 																				</svg>
 																				<span class="text-sm text-[var(--text-secondary)]">{item.name}</span>
 																			</button>
 																			<div class="flex items-center gap-0.5">
 																				<button
-																					onclick={() => state.startEditListItem(entityKey, attr.name, itemIdx, item)}
+																					onclick={() => sandbox.startEditListItem(entityKey, attr.name, itemIdx, item)}
 																					class="p-1 opacity-0 group-hover:opacity-100 hover:bg-[var(--border-primary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] rounded transition"
 																					title="Edit {item.name}"
 																				>
@@ -421,7 +444,7 @@
 																					</svg>
 																				</button>
 																				<button
-																					onclick={() => state.deleteListItem(entityKey, attr.name, itemIdx)}
+																					onclick={() => sandbox.deleteListItem(entityKey, attr.name, itemIdx)}
 																					class="p-1 opacity-0 group-hover:opacity-100 hover:bg-[var(--border-primary)] text-[var(--text-muted)] hover:text-red-400 rounded transition"
 																					title="Remove {item.name}"
 																				>
@@ -430,7 +453,7 @@
 																					</svg>
 																				</button>
 																				<button
-																					onclick={() => state.handleSceneAction('look_item', { owner: state.getEntityLabel(entityKey), itemName: item.name, itemDescription: item.description })}
+																					onclick={() => sandbox.handleSceneAction('look_item', { owner: sandbox.getEntityLabel(entityKey), itemName: item.name, itemDescription: item.description })}
 																					class="p-1 hover:bg-[var(--border-primary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] rounded transition"
 																					title="Look at {item.name}"
 																				>
@@ -441,7 +464,7 @@
 																				</button>
 																			</div>
 																		</div>
-																		{#if state.expandedWorldItems.has(listItemKey)}
+																		{#if sandbox.expandedWorldItems.has(listItemKey)}
 																			<div class="px-4 pb-1 pl-9" transition:slide={{ duration: 150 }}>
 																				<p class="text-xs text-[var(--text-muted)]">{item.description}</p>
 																			</div>
@@ -454,7 +477,7 @@
 												{/if}
 											{/if}
 										{/each}
-									{:else if state.worldStateLoading}
+									{:else if sandbox.worldStateLoading}
 										<div class="flex items-center justify-center py-4">
 											<div class="animate-spin rounded-full h-5 w-5 border-2 border-[var(--accent-primary)] border-t-transparent"></div>
 											<span class="ml-2 text-sm text-[var(--text-muted)]">Generating...</span>
@@ -463,7 +486,7 @@
 										<div class="text-center py-4">
 											<p class="text-xs text-[var(--text-muted)]">No data</p>
 											<button
-												onclick={state.generateWorldState}
+												onclick={sandbox.generateWorldState}
 												class="mt-1 text-xs text-[var(--accent-primary)] hover:underline"
 											>
 												Generate world state
@@ -476,14 +499,14 @@
 					{/if}
 
 					<!-- Connections (scene mode only) -->
-					{#if state.mode === 'scene'}
+					{#if sandbox.mode === 'scene'}
 						<div class="p-4">
 							<h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Go to</h3>
 							<div class="space-y-2">
-								{#each state.connections as connection}
+								{#each sandbox.connections as connection}
 									<button
-										onclick={() => state.move(connection.id)}
-										disabled={state.moving}
+										onclick={() => sandbox.move(connection.id)}
+										disabled={sandbox.moving}
 										class="w-full flex items-center gap-3 p-3 bg-[var(--bg-tertiary)] rounded-lg hover:bg-[var(--accent-primary)]/10 transition text-left disabled:opacity-50"
 									>
 										<svg class="w-5 h-5 text-[var(--accent-primary)] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -497,7 +520,7 @@
 							</div>
 						</div>
 
-						{#if state.moving}
+						{#if sandbox.moving}
 							<div class="p-4 text-center">
 								<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--accent-primary)] mx-auto"></div>
 								<p class="text-sm text-[var(--text-muted)] mt-2">Moving...</p>

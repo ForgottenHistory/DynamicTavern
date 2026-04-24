@@ -254,6 +254,13 @@
 				.replace(/[\u2014]/g, '-')  // Em dash
 				.replace(/[\u2013]/g, '-'); // En dash
 
+			// Insert a space where action/dialogue segments abut each other with
+			// no whitespace. Without this, *action*"dialogue"*action* renders as
+			// `action"dialogue"action` because the * markers vanish during styling.
+			processed = processed
+				.replace(/\*"/g, '* "')
+				.replace(/"\*/g, '" *');
+
 			// Normalize asterisks per line
 			processed = processed.split('\n').map(normalizeAsterisks).join('\n');
 

@@ -6,8 +6,10 @@ import { eq } from 'drizzle-orm';
 import { sandboxService } from '$lib/server/services/sandboxService';
 import { sandboxParticipantService } from '$lib/server/services/sandboxParticipantService';
 import { worldService } from '$lib/server/services/worldService';
-import { generateSandboxNarration, formatSandboxHistory } from '$lib/server/llm/sandboxNarration';
+import { generateSandboxNarration, generateCharacterEntranceDialogue, formatSandboxHistory } from '$lib/server/llm/sandboxNarration';
 import { personaService } from '$lib/server/services/personaService';
+import { decideOnCharacterEntered } from '$lib/server/services/gameMasterService';
+import { sandboxImageService } from '$lib/server/services/sandboxImageService';
 
 // GET - List all user's characters (for the picker), filtering out already-present ones
 export const GET: RequestHandler = async ({ params, cookies }) => {
@@ -96,12 +98,11 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 		const world = await worldService.get(session.worldFile);
 		const location = world ? worldService.getLocation(world, session.currentLocationId) : null;
 
-		// Generate narrator entrance message
+		// Generate character-spoken entrance beat (replaces the old narrator message)
 		const userInfo = await personaService.getActiveUserInfo(parseInt(userId));
 		const existingMessages = await sandboxService.getMessages(sessionId);
-		const narration = await generateSandboxNarration({
+		const entrance = await generateCharacterEntranceDialogue({
 			userId: parseInt(userId),
-			locationType: 'character_enter',
 			locationName: location?.name || session.currentLocationId,
 			locationDescription: location?.description || '',
 			userName: userInfo.name,
@@ -113,17 +114,54 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 			history: formatSandboxHistory(existingMessages)
 		});
 
-		// Add narrator message
+		// Add as an assistant (character) message
 		await sandboxService.addMessage(sessionId, parseInt(userId), {
-			role: 'narrator',
-			content: narration.content,
-			senderName: 'Narrator',
-			reasoning: narration.reasoning
+			role: 'assistant',
+			content: entrance.content,
+			characterId: character.id,
+			senderName: character.name,
+			senderAvatar: character.thumbnailData || character.imageData,
+			reasoning: entrance.reasoning
 		});
 
 		// Get updated state
 		const activeCharacters = await sandboxParticipantService.getActiveCharacters(sessionId);
 		const allMessages = await sandboxService.getMessages(sessionId);
+
+		// Ask the GM which (if any) scene-level actions to take for this entrance.
+		// Fire-and-forget — we don't want to block the response on image generation.
+		(async () => {
+			try {
+				const actions = await decideOnCharacterEntered({
+					locationName: location?.name || session.currentLocationId,
+					locationDescription: location?.description || '',
+					characterName: character.name,
+					characterDescription: character.description || ''
+				});
+
+				for (const action of actions) {
+					if (action.type === 'generate_image') {
+						const pending = await sandboxImageService.createPending({
+							sessionId,
+							characterId: character.id,
+							characterName: character.name,
+							reason: action.reason
+						});
+						// Don't await — let the response return while SD churns.
+						sandboxImageService
+							.generateForCharacter({
+								imageRowId: pending.id,
+								sessionId,
+								userId: parseInt(userId),
+								characterId: character.id
+							})
+							.catch((err) => console.error('Background image generation failed:', err));
+					}
+				}
+			} catch (err) {
+				console.error('GM character-entry hook failed:', err);
+			}
+		})();
 
 		return json({
 			characters: activeCharacters,

@@ -11,6 +11,7 @@
 		user: SafeUser;
 		currentPath: string;
 		children: Snippet;
+		fullscreen?: boolean;
 	}
 
 	interface ActivePersonaInfo {
@@ -40,7 +41,7 @@
 		messageCount: number;
 	}
 
-	let { user, currentPath, children }: Props = $props();
+	let { user, currentPath, children, fullscreen = false }: Props = $props();
 
 	let sidebarCollapsed = $state(false);
 	let characters = $state<Character[]>(getCharactersCache());
@@ -136,40 +137,46 @@
 	}
 </script>
 
-<div class="flex h-screen bg-[var(--bg-primary)]">
-	<!-- Left Sidebar -->
-	<Sidebar
-		{user}
-		{conversations}
-		{activePersona}
-		collapsed={sidebarCollapsed}
-	/>
+{#if fullscreen}
+	<div class="h-screen bg-[var(--bg-primary)]">
+		{@render children()}
+	</div>
+{:else}
+	<div class="flex h-screen bg-[var(--bg-primary)]">
+		<!-- Left Sidebar -->
+		<Sidebar
+			{user}
+			{conversations}
+			{activePersona}
+			collapsed={sidebarCollapsed}
+		/>
 
-	<!-- Sidebar Toggle Button -->
-	<button
-		onclick={toggleSidebar}
-		class="fixed left-{sidebarCollapsed
-			? '0'
-			: '[312px]'} top-1/2 -translate-y-1/2 z-50 bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-[var(--text-secondary)] p-2 rounded-r-lg shadow-md hover:bg-[var(--bg-tertiary)] transition"
-		title={sidebarCollapsed ? 'Show chats' : 'Hide chats'}
-	>
-		<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			{#if sidebarCollapsed}
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-			{:else}
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-			{/if}
-		</svg>
-	</button>
+		<!-- Sidebar Toggle Button -->
+		<button
+			onclick={toggleSidebar}
+			class="fixed left-{sidebarCollapsed
+				? '0'
+				: '[312px]'} top-1/2 -translate-y-1/2 z-50 bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-[var(--text-secondary)] p-2 rounded-r-lg shadow-md hover:bg-[var(--bg-tertiary)] transition"
+			title={sidebarCollapsed ? 'Show chats' : 'Hide chats'}
+		>
+			<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				{#if sidebarCollapsed}
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+				{:else}
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+				{/if}
+			</svg>
+		</button>
 
-	<!-- Main Content Area -->
-	<div class="flex-1 flex flex-col">
-		<!-- Top Navigation Bar -->
-		<TopNavBar {currentPath} />
+		<!-- Main Content Area -->
+		<div class="flex-1 flex flex-col">
+			<!-- Top Navigation Bar -->
+			<TopNavBar {currentPath} />
 
-		<!-- Page Content -->
-		<div class="flex-1 overflow-hidden">
-			{@render children()}
+			<!-- Page Content -->
+			<div class="flex-1 overflow-hidden">
+				{@render children()}
+			</div>
 		</div>
 	</div>
-</div>
+{/if}

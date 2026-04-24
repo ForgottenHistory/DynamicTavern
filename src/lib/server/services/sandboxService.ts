@@ -59,6 +59,12 @@ class SandboxService {
 			.delete(sandboxSessions)
 			.where(and(eq(sandboxSessions.id, sessionId), eq(sandboxSessions.userId, userId)));
 
+		if (result.changes > 0) {
+			// Clean up on-disk image files. Imported lazily to avoid a circular dep.
+			const { sandboxImageService } = await import('./sandboxImageService');
+			await sandboxImageService.deleteSessionFiles(sessionId);
+		}
+
 		return result.changes > 0;
 	}
 

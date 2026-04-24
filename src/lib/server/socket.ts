@@ -46,6 +46,18 @@ export function initSocketServer(httpServer: Server) {
 			socket.leave(`conversation-${conversationId}`);
 			logger.debug(`Socket ${socket.id} left conversation ${conversationId}`);
 		});
+
+		// Join a sandbox session room
+		socket.on('join-sandbox', (sessionId: number) => {
+			socket.join(`sandbox-${sessionId}`);
+			logger.debug(`Socket ${socket.id} joined sandbox ${sessionId}`);
+		});
+
+		// Leave a sandbox session room
+		socket.on('leave-sandbox', (sessionId: number) => {
+			socket.leave(`sandbox-${sessionId}`);
+			logger.debug(`Socket ${socket.id} left sandbox ${sessionId}`);
+		});
 	});
 
 	logger.success('Socket.IO server initialized');
@@ -94,4 +106,28 @@ export function emitTyping(conversationId: number, isTyping: boolean) {
 	if (!io) return;
 	io.to(`conversation-${conversationId}`).emit('typing', isTyping);
 	logger.debug(`Emitted typing=${isTyping} to conversation ${conversationId}`);
+}
+
+/**
+ * Emit a sandbox image update (created / status change) to a sandbox room.
+ */
+export function emitSandboxImageUpdate(sessionId: number, image: any) {
+	if (!io && global.__socketio) {
+		io = global.__socketio;
+	}
+	if (!io) return;
+	io.to(`sandbox-${sessionId}`).emit('sandbox-image-update', image);
+	logger.debug(`Emitted sandbox-image-update to sandbox ${sessionId} (image ${image?.id}, ${image?.status})`);
+}
+
+/**
+ * Emit a sandbox image deletion to a sandbox room.
+ */
+export function emitSandboxImageDelete(sessionId: number, imageId: number) {
+	if (!io && global.__socketio) {
+		io = global.__socketio;
+	}
+	if (!io) return;
+	io.to(`sandbox-${sessionId}`).emit('sandbox-image-delete', imageId);
+	logger.debug(`Emitted sandbox-image-delete to sandbox ${sessionId} (image ${imageId})`);
 }

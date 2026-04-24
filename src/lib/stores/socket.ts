@@ -68,6 +68,54 @@ export function onTyping(callback: (isTyping: boolean) => void) {
 }
 
 /**
+ * Join a sandbox session room
+ */
+export function joinSandbox(sessionId: number) {
+	if (!socket) return;
+	socket.emit('join-sandbox', sessionId);
+}
+
+/**
+ * Leave a sandbox session room
+ */
+export function leaveSandbox(sessionId: number) {
+	if (!socket) return;
+	socket.emit('leave-sandbox', sessionId);
+}
+
+/**
+ * Listen for sandbox image updates
+ */
+export function onSandboxImageUpdate(callback: (image: any) => void) {
+	if (!socket) return;
+	socket.on('sandbox-image-update', callback);
+}
+
+/**
+ * Stop listening for sandbox image updates
+ */
+export function offSandboxImageUpdate() {
+	if (!socket) return;
+	socket.off('sandbox-image-update');
+}
+
+/**
+ * Listen for sandbox image deletions
+ */
+export function onSandboxImageDelete(callback: (imageId: number) => void) {
+	if (!socket) return;
+	socket.on('sandbox-image-delete', callback);
+}
+
+/**
+ * Stop listening for sandbox image deletions
+ */
+export function offSandboxImageDelete() {
+	if (!socket) return;
+	socket.off('sandbox-image-delete');
+}
+
+/**
  * Remove all listeners
  */
 export function removeAllListeners() {

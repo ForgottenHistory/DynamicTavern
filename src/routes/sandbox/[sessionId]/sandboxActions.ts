@@ -222,6 +222,31 @@ export async function updateWorldState(
 	return null;
 }
 
+export interface SandboxImageRow {
+	id: number;
+	sandboxSessionId: number;
+	characterId: number | null;
+	characterName: string;
+	status: 'pending' | 'ready' | 'failed';
+	imagePath: string | null;
+	tags: string | null;
+	reason: string | null;
+	error: string | null;
+	createdAt: string;
+}
+
+export async function fetchSandboxImages(sessionId: number): Promise<SandboxImageRow[]> {
+	const res = await fetch(`/api/sandbox/sessions/${sessionId}/images`);
+	if (!res.ok) return [];
+	const data = await res.json();
+	return data.images || [];
+}
+
+export async function deleteSandboxImage(imageId: number): Promise<boolean> {
+	const res = await fetch(`/api/sandbox/images/${imageId}`, { method: 'DELETE' });
+	return res.ok;
+}
+
 export async function clearWorldState(sessionId: number): Promise<boolean> {
 	const res = await fetch(`/api/sandbox/sessions/${sessionId}/world-state`, {
 		method: 'DELETE'

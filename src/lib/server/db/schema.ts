@@ -388,7 +388,27 @@ export const sandboxParticipants = sqliteTable('sandbox_participants', {
 	leftAt: integer('left_at', { mode: 'timestamp' })
 });
 
+export const sandboxImages = sqliteTable('sandbox_images', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	sandboxSessionId: integer('sandbox_session_id')
+		.notNull()
+		.references(() => sandboxSessions.id, { onDelete: 'cascade' }),
+	characterId: integer('character_id')
+		.references(() => characters.id, { onDelete: 'set null' }),
+	characterName: text('character_name').notNull(),
+	status: text('status').notNull().default('pending'), // 'pending' | 'ready' | 'failed'
+	imagePath: text('image_path'), // Relative path under data/sandbox_images, e.g. "28/12.png"
+	tags: text('tags'),
+	reason: text('reason'),
+	error: text('error'),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date())
+});
+
 export type SandboxSession = typeof sandboxSessions.$inferSelect;
 export type NewSandboxSession = typeof sandboxSessions.$inferInsert;
 export type SandboxParticipant = typeof sandboxParticipants.$inferSelect;
 export type NewSandboxParticipant = typeof sandboxParticipants.$inferInsert;
+export type SandboxImage = typeof sandboxImages.$inferSelect;
+export type NewSandboxImage = typeof sandboxImages.$inferInsert;

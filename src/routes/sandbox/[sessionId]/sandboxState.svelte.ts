@@ -5,6 +5,7 @@ import * as api from './sandboxActions';
 import { createWorldState } from './sandboxWorldState.svelte';
 import { createMessageActions } from './sandboxMessageActions.svelte';
 import { createCharacters } from './sandboxCharacters.svelte';
+import { createSandboxImages } from './sandboxImages.svelte';
 
 export type { ImpersonateStyle, SceneActionType } from './sandboxActions';
 export type { ConnectionInfo } from './sandboxActions';
@@ -64,6 +65,10 @@ export function createSandboxState(options: SandboxStateOptions) {
 		setGenerating: (v) => { generating = v; }
 	});
 
+	const imagesModule = createSandboxImages({
+		sessionId: options.sessionId
+	});
+
 	const charactersModule = createCharacters({
 		sessionId: options.sessionId,
 		getCharacters: () => characters,
@@ -86,7 +91,8 @@ export function createSandboxState(options: SandboxStateOptions) {
 	// --- Init ---
 
 	async function init() {
-		await Promise.all([loadSession(), loadSettings(), worldStateModule.load()]);
+		imagesModule.start();
+		await Promise.all([loadSession(), loadSettings(), worldStateModule.load(), imagesModule.refresh()]);
 	}
 
 	// --- Session loading ---
@@ -367,6 +373,12 @@ export function createSandboxState(options: SandboxStateOptions) {
 		// Derived
 		get hasAssistantMessages() { return hasAssistantMessages; },
 		get sceneCharacters() { return sceneCharacters; },
+
+		// Images (delegated)
+		get images() { return imagesModule.images; },
+		refreshImages: imagesModule.refresh,
+		removeImage: imagesModule.remove,
+		disposeImages: imagesModule.dispose,
 
 		// Lifecycle
 		init,
